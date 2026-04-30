@@ -128,6 +128,80 @@ body,
   border-top: 1px solid #222;
 }
 
+.rec-indicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.rec-indicator__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.download-card {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.download-card__preview {
+  width: 100%;
+  max-height: 30vh;
+  background: #000;
+  border-radius: 8px;
+}
+
+.download-card__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.download-card__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.download-card__actions .btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .calibrate-banner {
   position: absolute;
   top: 16px;
@@ -167,6 +241,16 @@ body,
 .btn--primary {
   background: var(--accent);
   color: #001a2c;
+}
+
+.btn--danger {
+  background: var(--danger);
+  color: #1a0000;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid #333;
 }
 
 .status {
