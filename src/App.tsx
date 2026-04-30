@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { CameraView } from './components/CameraView';
+import { ControlPanel } from './components/ControlPanel';
 import { DebugOverlay } from './components/DebugOverlay';
 import { DownloadLink } from './components/DownloadLink';
 import { useAvatarRig } from './hooks/useAvatarRig';
@@ -25,7 +26,6 @@ export function App() {
   } = useFaceLandmarker(videoRef, sceneActive);
 
   const avatar = useAvatarRig(mirrorRoot, faceRefs.state);
-
   const recorder = useRecorder(canvasRef, stream);
 
   const onToggleTracking = () => {
@@ -57,52 +57,32 @@ export function App() {
             <span className="rec-indicator__dot" /> REC
           </div>
         )}
+        {status === 'idle' && !error && (
+          <div className="hint">
+            「カメラ開始」をタップして撮影開始
+            <br />
+            <small>iOS は Safari + HTTPS が必要です</small>
+          </div>
+        )}
         <DownloadLink recording={recorder.recording} onClear={recorder.clear} />
       </div>
 
-      <div className="controls">
-        {status !== 'ready' ? (
-          <button
-            className="btn btn--primary"
-            onClick={() => void start()}
-            disabled={status === 'starting'}
-          >
-            {status === 'starting' ? '起動中…' : 'カメラ開始'}
-          </button>
-        ) : (
-          <>
-            <button className="btn" onClick={stop}>
-              停止
-            </button>
-            <button
-              className={`btn ${tracking ? 'btn--primary' : ''}`}
-              onClick={onToggleTracking}
-            >
-              追従 {tracking ? 'ON' : 'OFF'}
-            </button>
-            <button className="btn" onClick={onCalibrate} disabled={calibrating}>
-              {calibrating ? '取得中…' : 'キャリブレ'}
-            </button>
-            {recorder.status !== 'unsupported' && (
-              <button
-                className={`btn ${recorder.status === 'recording' ? 'btn--danger' : 'btn--primary'}`}
-                onClick={onToggleRec}
-              >
-                {recorder.status === 'recording' ? '録画停止' : '録画開始'}
-              </button>
-            )}
-          </>
-        )}
-        <button className="btn btn--ghost" onClick={() => setDebug((d) => !d)}>
-          Debug {debug ? 'OFF' : 'ON'}
-        </button>
-        <span className="status">
-          cam:{status}
-          {error ? ` — ${error}` : ''} / face:{faceStatus}
-          {faceError ? ` — ${faceError}` : ''}
-          {recorder.status === 'unsupported' && ' / rec:unsupported'}
-        </span>
-      </div>
+      <ControlPanel
+        camStatus={status}
+        camError={error}
+        faceStatus={faceStatus}
+        faceError={faceError}
+        recStatus={recorder.status}
+        tracking={tracking}
+        calibrating={calibrating}
+        debug={debug}
+        onStart={() => void start()}
+        onStop={stop}
+        onToggleTracking={onToggleTracking}
+        onCalibrate={onCalibrate}
+        onToggleRec={onToggleRec}
+        onToggleDebug={() => setDebug((d) => !d)}
+      />
     </div>
   );
 }

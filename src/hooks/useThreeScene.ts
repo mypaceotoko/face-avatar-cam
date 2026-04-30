@@ -46,9 +46,22 @@ export function useThreeScene(
       antialias: true,
       alpha: false,
       preserveDrawingBuffer: true, // required for canvas.captureStream on some browsers
+      powerPreference: 'high-performance',
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Phones with very high DPRs (3+) burn fill rate for little visible gain;
+    // cap at 2 to keep the rAF loop comfortably above 30fps.
+    const isCoarse =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isCoarse ? 1.75 : 2));
+
+    // iOS Safari intermittently loses the WebGL context when the page is
+    // backgrounded; prevent the default so the browser tries to restore it.
+    const onContextLost = (ev: Event) => {
+      ev.preventDefault();
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
@@ -101,6 +114,7 @@ export function useThreeScene(
       rafRef.current = null;
       ro.disconnect();
       video.removeEventListener('loadedmetadata', resize);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       background.dispose();
       renderer.dispose();
       refs.current = {
