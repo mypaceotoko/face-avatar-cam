@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { createSceneCamera, updateCameraAspect } from '../three/alignCameraToVideo';
 import { createBackgroundPlane, type BackgroundPlane } from '../three/createBackgroundPlane';
@@ -14,11 +14,17 @@ export type ThreeRefs = {
 
 const BG_DISTANCE_CM = 120;
 
+export type UseThreeSceneResult = {
+  refs: React.MutableRefObject<ThreeRefs>;
+  /** State-backed handle so downstream hooks can react to scene readiness. */
+  mirrorRoot: THREE.Group | null;
+};
+
 export function useThreeScene(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   videoRef: React.RefObject<HTMLVideoElement>,
   active: boolean,
-) {
+): UseThreeSceneResult {
   const refs = useRef<ThreeRefs>({
     renderer: null,
     scene: null,
@@ -27,6 +33,7 @@ export function useThreeScene(
     background: null,
   });
   const rafRef = useRef<number | null>(null);
+  const [mirrorRoot, setMirrorRoot] = useState<THREE.Group | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -48,12 +55,10 @@ export function useThreeScene(
 
     const camera = createSceneCamera(1);
 
-    const mirrorRoot = new THREE.Group();
-    mirrorRoot.scale.x = -1;
-    scene.add(mirrorRoot);
+    const mirror = new THREE.Group();
+    mirror.scale.x = -1;
+    scene.add(mirror);
 
-    // Lighting (mirrored scale flips face normals on children, so add a
-    // matching light from the opposite side to keep things lit either way).
     scene.add(new THREE.AmbientLight(0xffffff, 0.55));
     const key = new THREE.DirectionalLight(0xffffff, 0.9);
     key.position.set(0.4, 0.6, 1).multiplyScalar(50);
@@ -63,9 +68,10 @@ export function useThreeScene(
     scene.add(fill);
 
     const background = createBackgroundPlane(video);
-    mirrorRoot.add(background.mesh);
+    mirror.add(background.mesh);
 
-    refs.current = { renderer, scene, camera, mirrorRoot, background };
+    refs.current = { renderer, scene, camera, mirrorRoot: mirror, background };
+    setMirrorRoot(mirror);
 
     const resize = () => {
       const w = canvas.clientWidth;
@@ -104,8 +110,9 @@ export function useThreeScene(
         mirrorRoot: null,
         background: null,
       };
+      setMirrorRoot(null);
     };
   }, [active, canvasRef, videoRef]);
 
-  return refs;
+  return { refs, mirrorRoot };
 }

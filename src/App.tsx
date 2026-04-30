@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { CameraView } from './components/CameraView';
 import { DebugOverlay } from './components/DebugOverlay';
+import { useAvatarRig } from './hooks/useAvatarRig';
 import { useCamera } from './hooks/useCamera';
 import { useFaceLandmarker } from './hooks/useFaceLandmarker';
 import { useThreeScene } from './hooks/useThreeScene';
@@ -11,13 +12,15 @@ export function App() {
   const [debug, setDebug] = useState(true);
 
   const sceneActive = status === 'ready';
-  useThreeScene(canvasRef, videoRef, sceneActive);
+  const { mirrorRoot } = useThreeScene(canvasRef, videoRef, sceneActive);
 
   const {
     status: faceStatus,
     error: faceError,
     refs: faceRefs,
   } = useFaceLandmarker(videoRef, sceneActive);
+
+  useAvatarRig(mirrorRoot);
 
   return (
     <div className="app">
