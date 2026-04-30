@@ -1,11 +1,34 @@
-// Step 1: 雛形のみ。Step 2 以降でカメラ・トラッキング・アバターを順に追加していく。
+import { CameraView } from './components/CameraView';
+import { useCamera } from './hooks/useCamera';
+
 export function App() {
+  const { videoRef, status, error, start, stop } = useCamera();
+
   return (
     <div className="app">
-      <header className="app__header">
-        <h1>Face Avatar Cam</h1>
-        <p>Step 1: skeleton ready</p>
-      </header>
+      <div className="stage">
+        <CameraView ref={videoRef} mirrored />
+      </div>
+
+      <div className="controls">
+        {status !== 'ready' ? (
+          <button
+            className="btn btn--primary"
+            onClick={() => void start()}
+            disabled={status === 'starting'}
+          >
+            {status === 'starting' ? '起動中…' : 'カメラ開始'}
+          </button>
+        ) : (
+          <button className="btn" onClick={stop}>
+            停止
+          </button>
+        )}
+        <span className="status">
+          {status}
+          {error ? ` — ${error}` : ''}
+        </span>
+      </div>
     </div>
   );
 }
