@@ -2,9 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
-// HTTPS が getUserMedia の前提条件(localhost は HTTP でも可だが LAN 越しは必須)
-export default defineConfig({
-  plugins: [react(), basicSsl()],
+// HTTPS in dev so getUserMedia works on iPhone over LAN; relative base in
+// build so the same bundle works under any sub-path (GitHub Pages,
+// Netlify drag-and-drop, etc.).
+export default defineConfig(({ command }) => ({
+  plugins: [react(), ...(command === 'serve' ? [basicSsl()] : [])],
+  base: './',
   server: {
     host: true,
     https: true,
@@ -13,4 +16,4 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@mediapipe/tasks-vision'],
   },
-});
+}));
