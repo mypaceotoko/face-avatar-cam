@@ -10,6 +10,8 @@ export function App() {
   const { videoRef, status, error, start, stop } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [debug, setDebug] = useState(true);
+  const [tracking, setTrackingState] = useState(true);
+  const [calibrating, setCalibrating] = useState(false);
 
   const sceneActive = status === 'ready';
   const { mirrorRoot } = useThreeScene(canvasRef, videoRef, sceneActive);
@@ -20,7 +22,19 @@ export function App() {
     refs: faceRefs,
   } = useFaceLandmarker(videoRef, sceneActive);
 
-  useAvatarRig(mirrorRoot);
+  const avatar = useAvatarRig(mirrorRoot, faceRefs.state);
+
+  const onToggleTracking = () => {
+    const next = !tracking;
+    setTrackingState(next);
+    avatar.setTracking(next);
+  };
+
+  const onCalibrate = () => {
+    setCalibrating(true);
+    avatar.startCalibration(1500);
+    window.setTimeout(() => setCalibrating(false), 1500);
+  };
 
   return (
     <div className="app">
@@ -28,6 +42,7 @@ export function App() {
         <CameraView ref={videoRef} />
         <canvas ref={canvasRef} className="render-canvas" />
         <DebugOverlay stateRef={faceRefs.state} fpsRef={faceRefs.fps} visible={debug} />
+        {calibrating && <div className="calibrate-banner">無表情で 1.5 秒キープ…</div>}
       </div>
 
       <div className="controls">
@@ -40,9 +55,20 @@ export function App() {
             {status === 'starting' ? '起動中…' : 'カメラ開始'}
           </button>
         ) : (
-          <button className="btn" onClick={stop}>
-            停止
-          </button>
+          <>
+            <button className="btn" onClick={stop}>
+              停止
+            </button>
+            <button
+              className={`btn ${tracking ? 'btn--primary' : ''}`}
+              onClick={onToggleTracking}
+            >
+              追従 {tracking ? 'ON' : 'OFF'}
+            </button>
+            <button className="btn" onClick={onCalibrate} disabled={calibrating}>
+              {calibrating ? '取得中…' : 'キャリブレ'}
+            </button>
+          </>
         )}
         <button className="btn" onClick={() => setDebug((d) => !d)}>
           Debug {debug ? 'OFF' : 'ON'}

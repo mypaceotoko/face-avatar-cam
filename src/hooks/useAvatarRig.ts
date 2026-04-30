@@ -1,39 +1,90 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { Calibration } from '../face/calibration';
+import { BlendshapeSmoother } from '../face/smoothing';
+import { emptyBlendshapes, type FaceState, type BlendshapeMap } from '../face/types';
+import { applyExpression, applyHeadPose } from '../three/applyExpression';
 import { createAvatar, type AvatarRig } from '../three/createAvatar';
 
-/** How big the model-space (radius ~0.9) maps to centimetres. ~7.2cm radius =
- *  ~14.4cm head width, close to a real head. Tuned in Step 6 with calibration. */
 const HEAD_SCALE_CM = 8;
-
-/** Where the static placeholder avatar sits before face tracking is wired up.
- *  Roughly the distance MediaPipe reports for a face at arm's length. */
 const PLACEHOLDER_Z_CM = -55;
 
-export type AvatarRefs = {
+export type AvatarController = {
   rig: React.MutableRefObject<AvatarRig | null>;
+  setTracking: (on: boolean) => void;
+  isTracking: () => boolean;
+  startCalibration: (durationMs?: number) => void;
+  resetCalibration: () => void;
 };
 
-export function useAvatarRig(parent: THREE.Group | null): AvatarRefs {
+export function useAvatarRig(
+  parent: THREE.Group | null,
+  faceStateRef: React.MutableRefObject<FaceState>,
+): AvatarController {
   const rigRef = useRef<AvatarRig | null>(null);
+  const trackingRef = useRef(true);
+  const smootherRef = useRef(new BlendshapeSmoother());
+  const calibrationRef = useRef(new Calibration());
+  const scratchBs = useRef<BlendshapeMap>(emptyBlendshapes());
 
   useEffect(() => {
     if (!parent) return;
 
     const rig = createAvatar();
     rig.root.scale.setScalar(HEAD_SCALE_CM);
-    // Step 5: static placeholder pose. Step 6 overwrites this each frame from
-    // FaceLandmarker's facialTransformationMatrix.
     rig.root.position.set(0, 0, PLACEHOLDER_Z_CM);
     parent.add(rig.root);
     rigRef.current = rig;
 
+    let raf = 0;
+    const tick = () => {
+      const r = rigRef.current;
+      if (r) {
+        const fs = faceStateRef.current;
+        if (trackingRef.current && fs.detected) {
+          applyHeadPose(r, fs.headMatrix);
+          // Copy raw blendshapes into a scratch object; calibration mutates
+          // the values; smoother holds rolling state.
+          const raw = scratchBs.current;
+          const src = fs.bs;
+          for (const k in src) {
+            (raw as unknown as Record<string, number>)[k] = (
+              src as unknown as Record<string, number>
+            )[k];
+          }
+          calibrationRef.current.feed(fs.bs, performance.now());
+          calibrationRef.current.apply(raw);
+          const smoothed = smootherRef.current.update(raw);
+          applyExpression(r, smoothed);
+        } else if (!trackingRef.current) {
+          // Tracking off: park at the placeholder pose and decay expression.
+          r.root.position.lerp(new THREE.Vector3(0, 0, PLACEHOLDER_Z_CM), 0.15);
+          r.root.quaternion.slerp(new THREE.Quaternion(), 0.15);
+          applyExpression(r, smootherRef.current.update(emptyBlendshapes()));
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
     return () => {
+      cancelAnimationFrame(raf);
       parent.remove(rig.root);
       rig.dispose();
       rigRef.current = null;
     };
-  }, [parent]);
+  }, [parent, faceStateRef]);
 
-  return { rig: rigRef };
+  const setTracking = useCallback((on: boolean) => {
+    trackingRef.current = on;
+  }, []);
+  const isTracking = useCallback(() => trackingRef.current, []);
+  const startCalibration = useCallback((durationMs?: number) => {
+    calibrationRef.current.start(durationMs);
+  }, []);
+  const resetCalibration = useCallback(() => {
+    calibrationRef.current.reset();
+  }, []);
+
+  return { rig: rigRef, setTracking, isTracking, startCalibration, resetCalibration };
 }
