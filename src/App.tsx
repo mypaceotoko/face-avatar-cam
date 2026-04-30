@@ -1,13 +1,20 @@
+import { useRef } from 'react';
 import { CameraView } from './components/CameraView';
 import { useCamera } from './hooks/useCamera';
+import { useThreeScene } from './hooks/useThreeScene';
 
 export function App() {
   const { videoRef, status, error, start, stop } = useCamera();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const sceneActive = status === 'ready';
+  useThreeScene(canvasRef, videoRef, sceneActive);
 
   return (
     <div className="app">
       <div className="stage">
-        <CameraView ref={videoRef} mirrored />
+        <CameraView ref={videoRef} />
+        <canvas ref={canvasRef} className="render-canvas" />
       </div>
 
       <div className="controls">
