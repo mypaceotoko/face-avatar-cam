@@ -11,6 +11,7 @@ import {
   type FaceState,
 } from '../face/types';
 import { applyExpression, applyHeadPose } from '../three/applyExpression';
+import { type CharacterType } from '../three/avatarCharacters';
 import { createAvatar, type AvatarRig } from '../three/createAvatar';
 
 const HEAD_SCALE_CM = 14;
@@ -29,6 +30,7 @@ export type AvatarController = {
 export function useAvatarRig(
   parent: THREE.Group | null,
   faceStateRef: React.MutableRefObject<FaceState>,
+  characterType: CharacterType = 'child',
 ): AvatarController {
   const rigRef = useRef<AvatarRig | null>(null);
   const trackingRef = useRef(true);
@@ -41,11 +43,16 @@ export function useAvatarRig(
   useEffect(() => {
     if (!parent) return;
 
-    const rig = createAvatar();
+    const rig = createAvatar(characterType);
     rig.root.scale.setScalar(HEAD_SCALE_CM);
     rig.root.position.set(0, 0, PLACEHOLDER_Z_CM);
     parent.add(rig.root);
     rigRef.current = rig;
+
+    // Reset smoothing and calibration so every character starts from a
+    // neutral baseline rather than inheriting the previous character's state.
+    smootherRef.current.reset();
+    calibrationRef.current.reset();
 
     let raf = 0;
     const tick = () => {
@@ -55,7 +62,6 @@ export function useAvatarRig(
         const now = performance.now();
         if (trackingRef.current && fs.detected) {
           applyHeadPose(r, fs.headMatrix);
-          // Copy raw blendshapes so calibration can mutate the working copy.
           const raw = scratchBs.current;
           const src = fs.bs;
           for (const k in src) {
@@ -70,9 +76,6 @@ export function useAvatarRig(
           expressionRef.current = expr;
           applyExpression(r, expr);
         } else if (!trackingRef.current) {
-          // Tracking off: park at the placeholder pose, decay the smoother
-          // toward zero, then run the engine on the decaying values so idle
-          // blinks/breath keep going.
           r.root.position.lerp(new THREE.Vector3(0, 0, PLACEHOLDER_Z_CM), 0.15);
           r.root.quaternion.slerp(new THREE.Quaternion(), 0.15);
           const smoothed = smootherRef.current.update(emptyBlendshapes());
@@ -80,8 +83,6 @@ export function useAvatarRig(
           expressionRef.current = expr;
           applyExpression(r, expr);
         } else {
-          // Tracking on but no face detected: ease everything off but keep
-          // the avatar present so the user gets feedback that it's looking.
           const smoothed = smootherRef.current.update(emptyBlendshapes());
           const expr = engineRef.current.compute(smoothed, false, now);
           expressionRef.current = expr;
@@ -98,7 +99,7 @@ export function useAvatarRig(
       rig.dispose();
       rigRef.current = null;
     };
-  }, [parent, faceStateRef]);
+  }, [parent, faceStateRef, characterType]);
 
   const setTracking = useCallback((on: boolean) => {
     trackingRef.current = on;

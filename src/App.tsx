@@ -9,6 +9,7 @@ import { useFaceLandmarker } from './hooks/useFaceLandmarker';
 import { useRecorder } from './hooks/useRecorder';
 import { useSegmenter } from './hooks/useSegmenter';
 import { useThreeScene } from './hooks/useThreeScene';
+import { type CharacterType } from './three/avatarCharacters';
 
 export function App() {
   const { videoRef, stream, status, error, start, stop } = useCamera();
@@ -17,9 +18,8 @@ export function App() {
   const [tracking, setTrackingState] = useState(true);
   const [calibrating, setCalibrating] = useState(false);
   const [greenScreen, setGreenScreen] = useState(false);
+  const [characterType, setCharacterType] = useState<CharacterType>('child');
 
-  // Mirror the green-screen flag into a ref so the render loop can poll it
-  // without re-running the scene effect on every toggle.
   const greenScreenRef = useRef(false);
   useEffect(() => {
     greenScreenRef.current = greenScreen;
@@ -41,7 +41,7 @@ export function App() {
     refs: faceRefs,
   } = useFaceLandmarker(videoRef, sceneActive);
 
-  const avatar = useAvatarRig(mirrorRoot, faceRefs.state);
+  const avatar = useAvatarRig(mirrorRoot, faceRefs.state, characterType);
   const recorder = useRecorder(canvasRef, stream);
 
   const onToggleTracking = () => {
@@ -105,6 +105,7 @@ export function App() {
         greenScreen={greenScreen}
         segmenterStatus={segmenter.status}
         segmenterError={segmenter.error}
+        characterType={characterType}
         onStart={() => void start()}
         onStop={stop}
         onToggleTracking={onToggleTracking}
@@ -112,6 +113,7 @@ export function App() {
         onToggleRec={onToggleRec}
         onToggleDebug={() => setDebug((d) => !d)}
         onToggleGreenScreen={onToggleGreenScreen}
+        onCharacterChange={setCharacterType}
       />
     </div>
   );

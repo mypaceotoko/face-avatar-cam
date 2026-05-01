@@ -1,3 +1,4 @@
+import { CHARACTER_ORDER, CHARACTERS, type CharacterType } from '../three/avatarCharacters';
 import type { CameraStatus } from '../hooks/useCamera';
 import type { RecorderStatus } from '../hooks/useRecorder';
 import type { SegmenterStatus } from '../hooks/useSegmenter';
@@ -14,6 +15,7 @@ type Props = {
   greenScreen: boolean;
   segmenterStatus: SegmenterStatus;
   segmenterError: string | null;
+  characterType: CharacterType;
   onStart: () => void;
   onStop: () => void;
   onToggleTracking: () => void;
@@ -21,6 +23,7 @@ type Props = {
   onToggleRec: () => void;
   onToggleDebug: () => void;
   onToggleGreenScreen: () => void;
+  onCharacterChange: (type: CharacterType) => void;
 };
 
 export function ControlPanel({
@@ -35,6 +38,7 @@ export function ControlPanel({
   greenScreen,
   segmenterStatus,
   segmenterError,
+  characterType,
   onStart,
   onStop,
   onToggleTracking,
@@ -42,9 +46,24 @@ export function ControlPanel({
   onToggleRec,
   onToggleDebug,
   onToggleGreenScreen,
+  onCharacterChange,
 }: Props) {
   return (
     <div className="controls">
+      {/* Face / character selector — always visible so users can browse
+          characters before or after starting the camera. */}
+      <div className="face-selector">
+        {CHARACTER_ORDER.map((type) => (
+          <button
+            key={type}
+            className={`btn btn--face ${characterType === type ? 'btn--face-active' : ''}`}
+            onClick={() => onCharacterChange(type)}
+          >
+            {CHARACTERS[type].labelJa}
+          </button>
+        ))}
+      </div>
+
       {camStatus !== 'ready' ? (
         <button
           className="btn btn--primary"
