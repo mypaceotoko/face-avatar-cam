@@ -1,27 +1,34 @@
 import { BLENDSHAPE_CHANNELS, type BlendshapeMap, type BlendshapeName } from './types';
 
 // Per-channel exponential moving average. Higher alpha = snappier.
-// Blinks are deliberately fast so they read as a real blink, not a fade.
-// Speech-driving channels (jawOpen, lip shape) run high so the avatar mouths
-// words in time with the audio rather than dragging behind it.
+//
+// Tuning rationale:
+//  - Mouth and jaw drive lip-sync; they MUST be fast (>=0.7) so syllables
+//    don't blur into a slow open/close. The previous defaults (0.4-0.55)
+//    flattened speech.
+//  - Blinks need to be near-instant (>=0.85) or they fade in/out instead of
+//    snapping like a real eyelid.
+//  - Brows are also bumped because they carry most of the emotional read.
+//  - On top of the per-channel alpha we apply a "snap" multiplier when the
+//    delta is large, so genuine fast motion arrives even faster.
 const ALPHA: Record<BlendshapeName, number> = {
-  jawOpen: 0.85,
+  jawOpen: 0.78,
   jawLeft: 0.55,
   jawRight: 0.55,
-  jawForward: 0.55,
-  mouthClose: 0.65,
-  mouthSmileLeft: 0.55,
-  mouthSmileRight: 0.55,
+  jawForward: 0.5,
+  mouthClose: 0.6,
+  mouthSmileLeft: 0.6,
+  mouthSmileRight: 0.6,
   mouthFrownLeft: 0.5,
   mouthFrownRight: 0.5,
-  mouthPucker: 0.6,
-  mouthFunnel: 0.6,
+  mouthPucker: 0.55,
+  mouthFunnel: 0.55,
   mouthDimpleLeft: 0.45,
   mouthDimpleRight: 0.45,
   mouthStretchLeft: 0.55,
   mouthStretchRight: 0.55,
-  mouthRollUpper: 0.5,
-  mouthRollLower: 0.5,
+  mouthRollUpper: 0.45,
+  mouthRollLower: 0.45,
   mouthShrugUpper: 0.45,
   mouthShrugLower: 0.45,
   mouthUpperUpLeft: 0.55,
@@ -30,32 +37,36 @@ const ALPHA: Record<BlendshapeName, number> = {
   mouthLowerDownRight: 0.6,
   mouthLeft: 0.45,
   mouthRight: 0.45,
-  tongueOut: 0.65,
-  eyeBlinkLeft: 0.7,
-  eyeBlinkRight: 0.7,
-  eyeSquintLeft: 0.5,
-  eyeSquintRight: 0.5,
-  eyeWideLeft: 0.55,
-  eyeWideRight: 0.55,
-  eyeLookInLeft: 0.5,
-  eyeLookOutLeft: 0.5,
-  eyeLookInRight: 0.5,
-  eyeLookOutRight: 0.5,
-  eyeLookUpLeft: 0.5,
-  eyeLookDownLeft: 0.5,
-  eyeLookUpRight: 0.5,
-  eyeLookDownRight: 0.5,
-  browInnerUp: 0.45,
-  browOuterUpLeft: 0.45,
-  browOuterUpRight: 0.45,
-  browDownLeft: 0.45,
-  browDownRight: 0.45,
-  cheekPuff: 0.35,
-  cheekSquintLeft: 0.4,
-  cheekSquintRight: 0.4,
-  noseSneerLeft: 0.4,
-  noseSneerRight: 0.4,
+  tongueOut: 0.6,
+  eyeBlinkLeft: 0.88,
+  eyeBlinkRight: 0.88,
+  eyeSquintLeft: 0.6,
+  eyeSquintRight: 0.6,
+  eyeWideLeft: 0.7,
+  eyeWideRight: 0.7,
+  eyeLookInLeft: 0.55,
+  eyeLookOutLeft: 0.55,
+  eyeLookInRight: 0.55,
+  eyeLookOutRight: 0.55,
+  eyeLookUpLeft: 0.55,
+  eyeLookDownLeft: 0.55,
+  eyeLookUpRight: 0.55,
+  eyeLookDownRight: 0.55,
+  browInnerUp: 0.6,
+  browOuterUpLeft: 0.6,
+  browOuterUpRight: 0.6,
+  browDownLeft: 0.6,
+  browDownRight: 0.6,
+  cheekPuff: 0.45,
+  cheekSquintLeft: 0.5,
+  cheekSquintRight: 0.5,
+  noseSneerLeft: 0.5,
+  noseSneerRight: 0.5,
 };
+
+/** Channels where a sudden large delta should snap (blink, jaw, smile). */
+const SNAP_THRESHOLD = 0.18;
+const SNAP_BOOST = 1.7;
 
 export class BlendshapeSmoother {
   private state: BlendshapeMap;
@@ -67,8 +78,13 @@ export class BlendshapeSmoother {
 
   update(target: BlendshapeMap): BlendshapeMap {
     for (const k of BLENDSHAPE_CHANNELS) {
-      const a = ALPHA[k];
-      this.state[k] = this.state[k] + (target[k] - this.state[k]) * a;
+      const cur = this.state[k];
+      const t = target[k];
+      let a = ALPHA[k];
+      if (Math.abs(t - cur) > SNAP_THRESHOLD) {
+        a = Math.min(1, a * SNAP_BOOST);
+      }
+      this.state[k] = cur + (t - cur) * a;
     }
     return this.state;
   }

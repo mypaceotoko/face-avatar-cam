@@ -2,27 +2,33 @@ import * as THREE from 'three';
 import { createAvatarMaterials, type AvatarMaterials } from './avatarMaterials';
 
 // Local model space: head ~0.9 unit radius. The caller scales the outer group
-// to centimetres (~14) so the avatar matches a real face when the FaceLandmarker
-// transformation matrix is applied.
+// to centimetres (~14) so the avatar matches a real face when the
+// FaceLandmarker transformation matrix is applied.
+//
+// Avatar parts grew during the expression pass:
+//   - Bigger eyes (sceleraR 0.18, eyeOffsetX 0.30) for a more readable iris
+//     at thumbnail size.
+//   - Lower eyelids: skin half-spheres that rise on squint to give a real
+//     "eye smile" instead of just closing from the top.
+//   - Cheeks: faded skin lobes that bloom on smile/laugh so the corners of
+//     the mouth get supported.
+//   - Teeth: a flat row behind the lips, alpha 0 by default; faded in by
+//     applyExpression when the mouth opens.
+//   - Mouth corner anchors so the grin/frown rotation reads at distance.
 
 export type AvatarRig = {
   /** Outer group placed in the scene. The caller writes the head matrix to
    *  this group. */
   root: THREE.Group;
-  /** Inner pivot at the head center. Scale stays fixed; root is what receives
-   *  the face matrix in Step 6. */
+  /** Inner pivot at the head center. */
   head: THREE.Group;
   parts: {
     skull: THREE.Mesh;
     nose: THREE.Mesh;
-    /** Pivot rotated around X by jawOpen so the lower face drops naturally. */
-    jaw: THREE.Group;
     mouthGroup: THREE.Group;
     mouthCavity: THREE.Mesh;
-    lipUpper: THREE.Mesh;
-    lipLower: THREE.Mesh;
-    teethUpper: THREE.Mesh;
-    teethLower: THREE.Mesh;
+    lipsOuter: THREE.Mesh;
+    teeth: THREE.Mesh;
     tongue: THREE.Mesh;
     lidLeftUpper: THREE.Mesh;
     lidRightUpper: THREE.Mesh;
@@ -37,32 +43,28 @@ export type AvatarRig = {
     cheekLeft: THREE.Mesh;
     cheekRight: THREE.Mesh;
     hair: THREE.Group;
-    neck: THREE.Mesh;
   };
   defaults: {
-    jawRotation: THREE.Euler;
     mouthGroup: { position: THREE.Vector3; scale: THREE.Vector3; rotation: THREE.Euler };
     mouthCavityScale: THREE.Vector3;
-    lipUpperPosition: THREE.Vector3;
-    lipUpperScale: THREE.Vector3;
-    lipUpperRotation: THREE.Euler;
-    lipLowerPosition: THREE.Vector3;
-    lipLowerScale: THREE.Vector3;
-    lipLowerRotation: THREE.Euler;
-    teethUpperPosition: THREE.Vector3;
-    teethLowerPosition: THREE.Vector3;
+    lipsOuterScale: THREE.Vector3;
+    lipsOuterRotation: THREE.Euler;
+    teethScale: THREE.Vector3;
+    teethPosition: THREE.Vector3;
     tonguePosition: THREE.Vector3;
     tongueScale: THREE.Vector3;
-    lidLeftScale: THREE.Vector3;
-    lidRightScale: THREE.Vector3;
-    lidLowerLeftScale: THREE.Vector3;
-    lidLowerRightScale: THREE.Vector3;
+    lidLeftUpperScale: THREE.Vector3;
+    lidRightUpperScale: THREE.Vector3;
+    lidLeftLowerScale: THREE.Vector3;
+    lidRightLowerScale: THREE.Vector3;
+    lidLeftLowerPosition: THREE.Vector3;
+    lidRightLowerPosition: THREE.Vector3;
     browLeft: { position: THREE.Vector3; rotation: THREE.Euler };
     browRight: { position: THREE.Vector3; rotation: THREE.Euler };
     eyeLeftScale: THREE.Vector3;
     eyeRightScale: THREE.Vector3;
-    cheekLeftPosition: THREE.Vector3;
-    cheekRightPosition: THREE.Vector3;
+    cheekLeft: { position: THREE.Vector3; scale: THREE.Vector3 };
+    cheekRight: { position: THREE.Vector3; scale: THREE.Vector3 };
   };
   materials: AvatarMaterials;
   dispose: () => void;
@@ -78,37 +80,17 @@ export function createAvatar(): AvatarRig {
   root.add(head);
 
   // ---- Skull ----------------------------------------------------------------
-  // Slightly elongated and pinched at the chin to read as a face rather than a
-  // perfect ball. Higher subdivision keeps the silhouette clean.
   const skullGeom = new THREE.SphereGeometry(0.9, 64, 64);
   const skull = new THREE.Mesh(skullGeom, materials.skin);
-  skull.scale.set(1.0, 1.08, 0.95);
+  skull.scale.set(1.0, 1.05, 0.95);
   head.add(skull);
 
-  // ---- Neck -----------------------------------------------------------------
-  // Cylinder tucked under the chin; slightly darker skin tone makes the
-  // chin-to-neck transition read without a hard line.
-  const neckGeom = new THREE.CylinderGeometry(0.42, 0.55, 0.7, 32, 1, true);
-  const neck = new THREE.Mesh(neckGeom, materials.skinShade);
-  neck.position.set(0, -1.05, -0.05);
-  head.add(neck);
-
   // ---- Nose -----------------------------------------------------------------
-  const noseGeom = new THREE.SphereGeometry(0.11, 28, 28);
+  const noseGeom = new THREE.SphereGeometry(0.1, 24, 24);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
-  nose.position.set(0, -0.06, 0.92);
-  nose.scale.set(0.95, 1.05, 0.85);
+  nose.position.set(0, -0.05, 0.92);
+  nose.scale.set(1.0, 0.95, 0.85);
   head.add(nose);
-
-  // Tiny nostril shadow spheres add a hint of nose definition.
-  const nostrilGeom = new THREE.SphereGeometry(0.025, 12, 12);
-  const nostrilMat = new THREE.MeshBasicMaterial({ color: 0x3a1d12 });
-  const nostrilL = new THREE.Mesh(nostrilGeom, nostrilMat);
-  nostrilL.position.set(-0.045, -0.12, 0.97);
-  head.add(nostrilL);
-  const nostrilR = new THREE.Mesh(nostrilGeom, nostrilMat);
-  nostrilR.position.set(0.045, -0.12, 0.97);
-  head.add(nostrilR);
 
   // ---- Ears -----------------------------------------------------------------
   const earGeom = new THREE.SphereGeometry(0.13, 20, 20);
@@ -121,30 +103,14 @@ export function createAvatar(): AvatarRig {
   earRight.scale.set(0.55, 1.0, 0.45);
   head.add(earRight);
 
-  // ---- Cheeks ---------------------------------------------------------------
-  // Soft pinkish blush spheres just below the eyes; semi-transparent so the
-  // skin underneath still shows through.
-  const cheekGeom = new THREE.SphereGeometry(0.18, 24, 24);
-  const cheekLeft = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekLeft.position.set(-0.42, -0.18, 0.78);
-  cheekLeft.scale.set(1.0, 0.6, 0.35);
-  head.add(cheekLeft);
-  const cheekRight = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekRight.position.set(0.42, -0.18, 0.78);
-  cheekRight.scale.set(1.0, 0.6, 0.35);
-  head.add(cheekRight);
-
   // ---- Hair (sculpted clumps) ----------------------------------------------
   const hair = new THREE.Group();
   hair.name = 'hair';
-  // Main cap covering the upper back of the head
   const capGeom = new THREE.SphereGeometry(0.94, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.55);
   const cap = new THREE.Mesh(capGeom, materials.hair);
   cap.position.set(0, 0.02, 0);
   hair.add(cap);
 
-  // Tufts: small half-sphere clumps stacked across the front and crown to give
-  // the chunky Memoji look. Each tuft is slightly different in size and angle.
   const tuftGeom = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
   const TUFTS: Array<{
     pos: [number, number, number];
@@ -173,15 +139,18 @@ export function createAvatar(): AvatarRig {
   head.add(hair);
 
   // ---- Eyes -----------------------------------------------------------------
-  const eyeOffsetX = 0.27;
-  const eyeY = 0.1;
+  // Bumped from 0.16/0.27 to give the avatar a more cartoony, expressive read
+  // at small sizes — eye area is the #1 driver of perceived emotion.
+  const eyeOffsetX = 0.30;
+  const eyeY = 0.10;
   const eyeZ = 0.78;
-  const sceleraR = 0.16;
+  const sceleraR = 0.18;
 
   const sceleraGeom = new THREE.SphereGeometry(sceleraR, 32, 32);
-  const irisGeom = new THREE.CircleGeometry(0.082, 32);
-  const pupilGeom = new THREE.CircleGeometry(0.038, 24);
-  const hiliteGeom = new THREE.CircleGeometry(0.018, 16);
+  const irisGeom = new THREE.CircleGeometry(0.11, 32);
+  const irisRingGeom = new THREE.RingGeometry(0.10, 0.115, 32);
+  const pupilGeom = new THREE.CircleGeometry(0.052, 24);
+  const hiliteGeom = new THREE.CircleGeometry(0.022, 16);
 
   function makeEye(side: -1 | 1) {
     const g = new THREE.Group();
@@ -197,23 +166,32 @@ export function createAvatar(): AvatarRig {
     iris.position.set(0, 0, sceleraR + 0.001);
     irisRoot.add(iris);
 
+    // Dark outer ring for a stronger iris silhouette.
+    const ring = new THREE.Mesh(
+      irisRingGeom,
+      new THREE.MeshBasicMaterial({ color: 0x1a0d04 }),
+    );
+    ring.position.set(0, 0, sceleraR + 0.0015);
+    irisRoot.add(ring);
+
     const pupil = new THREE.Mesh(pupilGeom, materials.pupil);
     pupil.position.set(0, 0, sceleraR + 0.002);
     irisRoot.add(pupil);
 
     const hilite = new THREE.Mesh(hiliteGeom, materials.hilite);
-    hilite.position.set(-0.025 * side, 0.025, sceleraR + 0.003);
+    hilite.position.set(-0.03 * side, 0.035, sceleraR + 0.003);
     irisRoot.add(hilite);
 
-    return { g, irisRoot };
+    return { g, irisRoot, ring };
   }
   const left = makeEye(-1);
   const right = makeEye(1);
   head.add(left.g);
   head.add(right.g);
 
-  // ---- Eyelids (skin-coloured upper hemispheres covering the eyes) ----------
-  const lidGeom = new THREE.SphereGeometry(
+  // ---- Eyelids --------------------------------------------------------------
+  // Upper lid: sits just above the eye, scale.y=0.05 at rest, ~1.0 closed.
+  const lidUpperGeom = new THREE.SphereGeometry(
     sceleraR + 0.005,
     24,
     24,
@@ -222,129 +200,124 @@ export function createAvatar(): AvatarRig {
     0,
     Math.PI / 2,
   );
-  const lidLeftUpper = new THREE.Mesh(lidGeom, materials.skin);
+  const lidLeftUpper = new THREE.Mesh(lidUpperGeom, materials.skin);
   lidLeftUpper.position.set(-eyeOffsetX, eyeY, eyeZ);
-  lidLeftUpper.scale.y = 0.05; // open by default — almost flat against the brow
+  lidLeftUpper.scale.y = 0.05;
   head.add(lidLeftUpper);
-  const lidRightUpper = new THREE.Mesh(lidGeom, materials.skin);
+  const lidRightUpper = new THREE.Mesh(lidUpperGeom, materials.skin);
   lidRightUpper.position.set(eyeOffsetX, eyeY, eyeZ);
   lidRightUpper.scale.y = 0.05;
   head.add(lidRightUpper);
 
-  // Lower lids: same geometry flipped under the eye. They barely show by
-  // default but rise on squint/cheekSquint to give a real squint look.
+  // Lower lid: lower hemisphere; rises on squint. We position the lower half
+  // sphere "downside up" (rotation) so its open edge faces up.
   const lidLowerGeom = new THREE.SphereGeometry(
     sceleraR + 0.005,
     24,
     24,
     0,
     Math.PI * 2,
-    Math.PI / 2,
+    0,
     Math.PI / 2,
   );
   const lidLeftLower = new THREE.Mesh(lidLowerGeom, materials.skin);
-  lidLeftLower.position.set(-eyeOffsetX, eyeY, eyeZ);
-  lidLeftLower.scale.y = 0.08;
+  lidLeftLower.position.set(-eyeOffsetX, eyeY - sceleraR * 0.35, eyeZ);
+  lidLeftLower.rotation.x = Math.PI; // flip so the dome points down
+  lidLeftLower.scale.y = 0.05;
   head.add(lidLeftLower);
   const lidRightLower = new THREE.Mesh(lidLowerGeom, materials.skin);
-  lidRightLower.position.set(eyeOffsetX, eyeY, eyeZ);
-  lidRightLower.scale.y = 0.08;
+  lidRightLower.position.set(eyeOffsetX, eyeY - sceleraR * 0.35, eyeZ);
+  lidRightLower.rotation.x = Math.PI;
+  lidRightLower.scale.y = 0.05;
   head.add(lidRightLower);
 
-  // ---- Eyebrows (rounded boxes following the skull curvature) ---------------
-  const browGeom = new THREE.BoxGeometry(0.26, 0.05, 0.06);
+  // ---- Eyebrows -------------------------------------------------------------
+  // Slightly bigger and a touch higher than before; the bolder Z gives a real
+  // shadow line that reads at thumbnail size.
+  const browGeom = new THREE.BoxGeometry(0.30, 0.07, 0.07);
   const browLeft = new THREE.Mesh(browGeom, materials.brow);
-  browLeft.position.set(-0.27, 0.32, 0.83);
-  browLeft.rotation.set(0, -0.2, 0.05);
+  browLeft.position.set(-0.30, 0.36, 0.83);
+  browLeft.rotation.set(0, -0.18, 0.06);
   head.add(browLeft);
   const browRight = new THREE.Mesh(browGeom, materials.brow);
-  browRight.position.set(0.27, 0.32, 0.83);
-  browRight.rotation.set(0, 0.2, -0.05);
+  browRight.position.set(0.30, 0.36, 0.83);
+  browRight.rotation.set(0, 0.18, -0.06);
   head.add(browRight);
 
-  // ---- Jaw + Mouth ----------------------------------------------------------
-  // jaw is a pivot at the cheek/ear line. Rotating it negative on X drops the
-  // mouth + lower lip + tongue down and forward together — this is what gives
-  // the lip-sync the visible "mouth opens" feeling, far more legible than just
-  // scaling the cavity.
-  const jaw = new THREE.Group();
-  jaw.position.set(0, 0, 0);
-  head.add(jaw);
+  // ---- Cheeks --------------------------------------------------------------
+  // Alpha-faded skin lobes; rise + fade in on smile/laugh to support corner-up.
+  const cheekGeom = new THREE.SphereGeometry(0.22, 20, 20);
+  const cheekLeft = new THREE.Mesh(cheekGeom, materials.cheek);
+  cheekLeft.position.set(-0.45, -0.15, 0.65);
+  cheekLeft.scale.set(0.7, 0.6, 0.5);
+  head.add(cheekLeft);
+  const cheekRight = new THREE.Mesh(cheekGeom, materials.cheek);
+  cheekRight.position.set(0.45, -0.15, 0.65);
+  cheekRight.scale.set(0.7, 0.6, 0.5);
+  head.add(cheekRight);
 
+  // ---- Mouth ----------------------------------------------------------------
   const mouthGroup = new THREE.Group();
-  mouthGroup.position.set(0, -0.32, 0.82);
-  jaw.add(mouthGroup);
+  mouthGroup.position.set(0, -0.34, 0.82);
+  head.add(mouthGroup);
 
-  // Upper lip: half-torus, the upper arc only.
-  const lipGeom = new THREE.TorusGeometry(0.16, 0.038, 16, 40, Math.PI);
-  const lipUpper = new THREE.Mesh(lipGeom, materials.lipUpper);
-  lipUpper.position.set(0, 0.0, 0);
-  lipUpper.rotation.set(0, 0, 0); // upper half (y >= 0)
-  lipUpper.scale.set(1.0, 0.55, 0.55);
-  mouthGroup.add(lipUpper);
+  // Outer lips: a torus we squash + rotate to read as a mouth shape. Slightly
+  // taller default than before so the mouth has visible volume even at rest.
+  const lipsGeom = new THREE.TorusGeometry(0.18, 0.045, 16, 48);
+  const lipsOuter = new THREE.Mesh(lipsGeom, materials.lip);
+  lipsOuter.scale.set(1.0, 0.55, 0.6);
+  lipsOuter.rotation.x = -0.1;
+  mouthGroup.add(lipsOuter);
 
-  // Lower lip: same half-torus rotated 180° so its arc is below.
-  const lipLowerGeom = new THREE.TorusGeometry(0.16, 0.045, 16, 40, Math.PI);
-  const lipLower = new THREE.Mesh(lipLowerGeom, materials.lipLower);
-  lipLower.position.set(0, 0.0, 0);
-  lipLower.rotation.set(0, 0, Math.PI);
-  lipLower.scale.set(1.0, 0.7, 0.6);
-  mouthGroup.add(lipLower);
-
-  // Mouth cavity: dark interior visible when the lips part.
+  // Mouth cavity: dark hemisphere behind the lips. Stretches vertically when
+  // jaw opens. Default scale.y is small so the closed mouth doesn't show black.
   const cavityGeom = new THREE.SphereGeometry(
-    0.14,
+    0.16,
     24,
     24,
     0,
     Math.PI * 2,
-    0,
-    Math.PI,
+    Math.PI / 2,
+    Math.PI / 2,
   );
   const mouthCavity = new THREE.Mesh(cavityGeom, materials.mouthCavity);
-  mouthCavity.position.set(0, 0, -0.03);
-  mouthCavity.scale.set(1.0, 0.18, 0.55);
+  mouthCavity.position.set(0, 0, -0.02);
+  mouthCavity.scale.set(1.0, 0.18, 0.6);
   mouthGroup.add(mouthCavity);
 
-  // Teeth: two flat blocks behind the lips. They stay hidden unless the mouth
-  // opens, at which point the parted lips reveal them.
-  const teethGeom = new THREE.BoxGeometry(0.22, 0.04, 0.04);
-  const teethUpper = new THREE.Mesh(teethGeom, materials.teeth);
-  teethUpper.position.set(0, 0.012, 0.0);
-  mouthGroup.add(teethUpper);
-  const teethLower = new THREE.Mesh(teethGeom, materials.teeth);
-  teethLower.position.set(0, -0.012, 0.0);
-  mouthGroup.add(teethLower);
+  // Teeth: thin upper-row plate sitting just inside the lip torus. Faded in by
+  // applyExpression when teethVisible > 0.
+  const teethGeom = new THREE.BoxGeometry(0.22, 0.05, 0.04);
+  const teeth = new THREE.Mesh(teethGeom, materials.teeth);
+  teeth.position.set(0, 0.025, 0.0);
+  mouthGroup.add(teeth);
 
-  // Tongue
-  const tongueGeom = new THREE.SphereGeometry(0.09, 20, 20);
+  // Tongue: tucked behind the lower lip, slides forward on tongueOut.
+  const tongueGeom = new THREE.SphereGeometry(0.10, 20, 20);
   const tongue = new THREE.Mesh(tongueGeom, materials.tongue);
-  tongue.position.set(0, -0.025, -0.05);
-  tongue.scale.set(1.0, 0.5, 1.1);
+  tongue.position.set(0, -0.03, -0.04);
+  tongue.scale.set(1.0, 0.55, 1.1);
   mouthGroup.add(tongue);
 
   const defaults = {
-    jawRotation: jaw.rotation.clone(),
     mouthGroup: {
       position: mouthGroup.position.clone(),
       scale: mouthGroup.scale.clone(),
       rotation: mouthGroup.rotation.clone(),
     },
     mouthCavityScale: mouthCavity.scale.clone(),
-    lipUpperPosition: lipUpper.position.clone(),
-    lipUpperScale: lipUpper.scale.clone(),
-    lipUpperRotation: lipUpper.rotation.clone(),
-    lipLowerPosition: lipLower.position.clone(),
-    lipLowerScale: lipLower.scale.clone(),
-    lipLowerRotation: lipLower.rotation.clone(),
-    teethUpperPosition: teethUpper.position.clone(),
-    teethLowerPosition: teethLower.position.clone(),
+    lipsOuterScale: lipsOuter.scale.clone(),
+    lipsOuterRotation: lipsOuter.rotation.clone(),
+    teethScale: teeth.scale.clone(),
+    teethPosition: teeth.position.clone(),
     tonguePosition: tongue.position.clone(),
     tongueScale: tongue.scale.clone(),
-    lidLeftScale: lidLeftUpper.scale.clone(),
-    lidRightScale: lidRightUpper.scale.clone(),
-    lidLowerLeftScale: lidLeftLower.scale.clone(),
-    lidLowerRightScale: lidRightLower.scale.clone(),
+    lidLeftUpperScale: lidLeftUpper.scale.clone(),
+    lidRightUpperScale: lidRightUpper.scale.clone(),
+    lidLeftLowerScale: lidLeftLower.scale.clone(),
+    lidRightLowerScale: lidRightLower.scale.clone(),
+    lidLeftLowerPosition: lidLeftLower.position.clone(),
+    lidRightLowerPosition: lidRightLower.position.clone(),
     browLeft: {
       position: browLeft.position.clone(),
       rotation: browLeft.rotation.clone(),
@@ -355,34 +328,40 @@ export function createAvatar(): AvatarRig {
     },
     eyeLeftScale: left.g.scale.clone(),
     eyeRightScale: right.g.scale.clone(),
-    cheekLeftPosition: cheekLeft.position.clone(),
-    cheekRightPosition: cheekRight.position.clone(),
+    cheekLeft: {
+      position: cheekLeft.position.clone(),
+      scale: cheekLeft.scale.clone(),
+    },
+    cheekRight: {
+      position: cheekRight.position.clone(),
+      scale: cheekRight.scale.clone(),
+    },
   };
 
   const dispose = () => {
     [
       skullGeom,
-      neckGeom,
       noseGeom,
-      nostrilGeom,
       earGeom,
-      cheekGeom,
       capGeom,
       tuftGeom,
       sceleraGeom,
       irisGeom,
+      irisRingGeom,
       pupilGeom,
       hiliteGeom,
-      lidGeom,
+      lidUpperGeom,
       lidLowerGeom,
       browGeom,
-      lipGeom,
-      lipLowerGeom,
+      cheekGeom,
+      lipsGeom,
       cavityGeom,
       teethGeom,
       tongueGeom,
     ].forEach((g) => g.dispose());
-    nostrilMat.dispose();
+    // The dark iris-ring uses an inline material; dispose it too.
+    (left.ring.material as THREE.Material).dispose();
+    (right.ring.material as THREE.Material).dispose();
     materials.dispose();
   };
 
@@ -392,13 +371,10 @@ export function createAvatar(): AvatarRig {
     parts: {
       skull,
       nose,
-      jaw,
       mouthGroup,
       mouthCavity,
-      lipUpper,
-      lipLower,
-      teethUpper,
-      teethLower,
+      lipsOuter,
+      teeth,
       tongue,
       lidLeftUpper,
       lidRightUpper,
@@ -413,7 +389,6 @@ export function createAvatar(): AvatarRig {
       cheekLeft,
       cheekRight,
       hair,
-      neck,
     },
     defaults,
     materials,

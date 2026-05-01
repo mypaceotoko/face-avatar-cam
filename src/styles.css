@@ -86,8 +86,16 @@ body,
   color: #ddd;
   pointer-events: none;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 220px;
+  max-height: calc(100% - 80px);
+  overflow-y: auto;
+}
+
+.debug-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 4px 0;
 }
 
 .debug-row {
