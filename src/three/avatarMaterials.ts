@@ -7,20 +7,25 @@ import * as THREE from 'three';
 export const PALETTE = {
   skin: 0xf6c945,
   skinShade: 0xcaa017,
+  cheek: 0xf2b56a, // warmer skin tone for the cheek puff that lifts on smile
   hair: 0x3a2218,
   hairHighlight: 0x4d2d1d,
-  brow: 0x3a2218,
+  brow: 0x2c1810,
   sclera: 0xffffff,
-  iris: 0x4a2a1a,
+  // Slightly brighter, more saturated brown — readable iris is the
+  // single biggest "is this thing alive" cue at thumbnail size.
+  iris: 0x6a3a1d,
   pupil: 0x0a0a0a,
   hilite: 0xffffff,
-  lip: 0xc97a6a,
-  mouthCavity: 0x5a1a1a,
+  lip: 0xc24c50,
+  mouthCavity: 0x4a1414,
   tongue: 0xe46a7a,
+  teeth: 0xf6f1e6,
 };
 
 export type AvatarMaterials = {
   skin: THREE.MeshStandardMaterial;
+  cheek: THREE.MeshStandardMaterial;
   hair: THREE.MeshStandardMaterial;
   brow: THREE.MeshStandardMaterial;
   sclera: THREE.MeshStandardMaterial;
@@ -30,6 +35,7 @@ export type AvatarMaterials = {
   lip: THREE.MeshStandardMaterial;
   mouthCavity: THREE.MeshStandardMaterial;
   tongue: THREE.MeshStandardMaterial;
+  teeth: THREE.MeshStandardMaterial;
   dispose: () => void;
 };
 
@@ -38,6 +44,13 @@ export function createAvatarMaterials(): AvatarMaterials {
     color: PALETTE.skin,
     roughness: 0.42,
     metalness: 0.0,
+  });
+  const cheek = new THREE.MeshStandardMaterial({
+    color: PALETTE.cheek,
+    roughness: 0.55,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.0, // faded in by applyExpression on smile/laugh.
   });
   const hair = new THREE.MeshStandardMaterial({
     color: PALETTE.hair,
@@ -77,12 +90,33 @@ export function createAvatarMaterials(): AvatarMaterials {
     roughness: 0.5,
     metalness: 0.0,
   });
+  const teeth = new THREE.MeshStandardMaterial({
+    color: PALETTE.teeth,
+    roughness: 0.3,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.0, // revealed by applyExpression when the mouth opens.
+  });
 
   const dispose = () => {
-    [skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue].forEach((m) =>
-      m.dispose(),
+    [skin, cheek, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue, teeth].forEach(
+      (m) => m.dispose(),
     );
   };
 
-  return { skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue, dispose };
+  return {
+    skin,
+    cheek,
+    hair,
+    brow,
+    sclera,
+    iris,
+    pupil,
+    hilite,
+    lip,
+    mouthCavity,
+    tongue,
+    teeth,
+    dispose,
+  };
 }

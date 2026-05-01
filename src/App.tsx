@@ -50,7 +50,12 @@ export function App() {
       <div className="stage">
         <CameraView ref={videoRef} />
         <canvas ref={canvasRef} className="render-canvas" />
-        <DebugOverlay stateRef={faceRefs.state} fpsRef={faceRefs.fps} visible={debug} />
+        <DebugOverlay
+          stateRef={faceRefs.state}
+          expressionRef={avatar.expression}
+          fpsRef={faceRefs.fps}
+          visible={debug}
+        />
         {calibrating && <div className="calibrate-banner">無表情で 1.5 秒キープ…</div>}
         {recorder.status === 'recording' && (
           <div className="rec-indicator">
