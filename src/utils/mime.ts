@@ -1,11 +1,14 @@
-// MediaRecorder mimeType picker. Order goes from most efficient (vp9 + opus)
-// down to Safari's mp4 fallback. Returns null if nothing is supported.
+// MediaRecorder mimeType picker. mp4 is preferred so the saved clip is playable
+// on iOS Photos / Files (which can't open WebM). Falls through to WebM on
+// browsers whose MediaRecorder doesn't expose an mp4 encoder (older Chrome /
+// Firefox).
 const CANDIDATES = [
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+  'video/mp4;codecs=h264,aac',
+  'video/mp4',
   'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8,opus',
   'video/webm',
-  'video/mp4;codecs=h264,aac',
-  'video/mp4',
 ];
 
 export function pickMimeType(): string | null {

@@ -6,7 +6,10 @@ import { emptyBlendshapes, type FaceState, type BlendshapeMap } from '../face/ty
 import { applyExpression, applyHeadPose } from '../three/applyExpression';
 import { createAvatar, type AvatarRig } from '../three/createAvatar';
 
-const HEAD_SCALE_CM = 8;
+// Sized large enough that the avatar head fully occludes the user's real face
+// at typical front-camera selfie distance; previous value (8) left visible
+// hair / chin / forehead around the edges.
+const HEAD_SCALE_CM = 14;
 const PLACEHOLDER_Z_CM = -55;
 
 export type AvatarController = {

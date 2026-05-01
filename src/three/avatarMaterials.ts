@@ -16,6 +16,7 @@ export const PALETTE = {
   hilite: 0xffffff,
   lip: 0xc97a6a,
   mouthCavity: 0x5a1a1a,
+  tongue: 0xe46a7a,
 };
 
 export type AvatarMaterials = {
@@ -28,6 +29,7 @@ export type AvatarMaterials = {
   hilite: THREE.MeshBasicMaterial;
   lip: THREE.MeshStandardMaterial;
   mouthCavity: THREE.MeshStandardMaterial;
+  tongue: THREE.MeshStandardMaterial;
   dispose: () => void;
 };
 
@@ -70,12 +72,17 @@ export function createAvatarMaterials(): AvatarMaterials {
     metalness: 0.0,
     side: THREE.DoubleSide,
   });
+  const tongue = new THREE.MeshStandardMaterial({
+    color: PALETTE.tongue,
+    roughness: 0.5,
+    metalness: 0.0,
+  });
 
   const dispose = () => {
-    [skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity].forEach((m) =>
+    [skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue].forEach((m) =>
       m.dispose(),
     );
   };
 
-  return { skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, dispose };
+  return { skin, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue, dispose };
 }
