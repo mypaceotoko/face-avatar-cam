@@ -1,5 +1,6 @@
 import type { CameraStatus } from '../hooks/useCamera';
 import type { RecorderStatus } from '../hooks/useRecorder';
+import type { SegmenterStatus } from '../hooks/useSegmenter';
 
 type Props = {
   camStatus: CameraStatus;
@@ -10,12 +11,16 @@ type Props = {
   tracking: boolean;
   calibrating: boolean;
   debug: boolean;
+  greenScreen: boolean;
+  segmenterStatus: SegmenterStatus;
+  segmenterError: string | null;
   onStart: () => void;
   onStop: () => void;
   onToggleTracking: () => void;
   onCalibrate: () => void;
   onToggleRec: () => void;
   onToggleDebug: () => void;
+  onToggleGreenScreen: () => void;
 };
 
 export function ControlPanel({
@@ -27,12 +32,16 @@ export function ControlPanel({
   tracking,
   calibrating,
   debug,
+  greenScreen,
+  segmenterStatus,
+  segmenterError,
   onStart,
   onStop,
   onToggleTracking,
   onCalibrate,
   onToggleRec,
   onToggleDebug,
+  onToggleGreenScreen,
 }: Props) {
   return (
     <div className="controls">
@@ -58,6 +67,13 @@ export function ControlPanel({
           <button className="btn" onClick={onCalibrate} disabled={calibrating}>
             {calibrating ? '取得中…' : 'キャリブレ'}
           </button>
+          <button
+            className={`btn ${greenScreen ? 'btn--green' : ''}`}
+            onClick={onToggleGreenScreen}
+            disabled={greenScreen && segmenterStatus === 'loading'}
+          >
+            グリーンバック {greenScreen ? 'ON' : 'OFF'}
+          </button>
           {recStatus !== 'unsupported' && (
             <button
               className={`btn ${recStatus === 'recording' ? 'btn--danger' : 'btn--primary'}`}
@@ -75,6 +91,8 @@ export function ControlPanel({
         cam:{camStatus}
         {camError ? ` — ${camError}` : ''} / face:{faceStatus}
         {faceError ? ` — ${faceError}` : ''}
+        {greenScreen && ` / seg:${segmenterStatus}`}
+        {segmenterError ? ` — ${segmenterError}` : ''}
         {recStatus === 'unsupported' && ' / rec:unsupported'}
       </span>
     </div>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CameraView } from './components/CameraView';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugOverlay } from './components/DebugOverlay';
@@ -7,6 +7,7 @@ import { useAvatarRig } from './hooks/useAvatarRig';
 import { useCamera } from './hooks/useCamera';
 import { useFaceLandmarker } from './hooks/useFaceLandmarker';
 import { useRecorder } from './hooks/useRecorder';
+import { useSegmenter } from './hooks/useSegmenter';
 import { useThreeScene } from './hooks/useThreeScene';
 
 export function App() {
@@ -15,9 +16,24 @@ export function App() {
   const [debug, setDebug] = useState(false);
   const [tracking, setTrackingState] = useState(true);
   const [calibrating, setCalibrating] = useState(false);
+  const [greenScreen, setGreenScreen] = useState(false);
+
+  // Mirror the green-screen flag into a ref so the render loop can poll it
+  // without re-running the scene effect on every toggle.
+  const greenScreenRef = useRef(false);
+  useEffect(() => {
+    greenScreenRef.current = greenScreen;
+  }, [greenScreen]);
 
   const sceneActive = status === 'ready';
-  const { mirrorRoot } = useThreeScene(canvasRef, videoRef, sceneActive);
+  const segmenter = useSegmenter(videoRef, sceneActive, greenScreen);
+  const { mirrorRoot } = useThreeScene(
+    canvasRef,
+    videoRef,
+    sceneActive,
+    segmenter.maskRef,
+    greenScreenRef,
+  );
 
   const {
     status: faceStatus,
@@ -45,6 +61,8 @@ export function App() {
     else recorder.start();
   };
 
+  const onToggleGreenScreen = () => setGreenScreen((g) => !g);
+
   return (
     <div className="app">
       <div className="stage">
@@ -52,6 +70,9 @@ export function App() {
         <canvas ref={canvasRef} className="render-canvas" />
         <DebugOverlay stateRef={faceRefs.state} fpsRef={faceRefs.fps} visible={debug} />
         {calibrating && <div className="calibrate-banner">無表情で 1.5 秒キープ…</div>}
+        {greenScreen && segmenter.status === 'loading' && (
+          <div className="calibrate-banner">グリーンバック準備中…</div>
+        )}
         {recorder.status === 'recording' && (
           <div className="rec-indicator">
             <span className="rec-indicator__dot" /> REC
@@ -76,12 +97,16 @@ export function App() {
         tracking={tracking}
         calibrating={calibrating}
         debug={debug}
+        greenScreen={greenScreen}
+        segmenterStatus={segmenter.status}
+        segmenterError={segmenter.error}
         onStart={() => void start()}
         onStop={stop}
         onToggleTracking={onToggleTracking}
         onCalibrate={onCalibrate}
         onToggleRec={onToggleRec}
         onToggleDebug={() => setDebug((d) => !d)}
+        onToggleGreenScreen={onToggleGreenScreen}
       />
     </div>
   );

@@ -17,14 +17,14 @@ export function applyHeadPose(
 ) {
   _m.fromArray(matrixData);
   _m.decompose(_pos, _quat, _scl);
-  // smooth toward target
   rig.root.position.lerp(_pos, poseLerp);
   _slerpQ.copy(rig.root.quaternion).slerp(_quat, poseLerp);
   rig.root.quaternion.copy(_slerpQ);
-  // scale stays fixed (set when avatar was created)
 }
 
-/** Map smoothed blendshapes onto the avatar rig handles. */
+/** Map smoothed blendshapes onto the avatar rig handles. Mouth amplitude is
+ *  intentionally exaggerated compared to the raw blendshapes so the lip-sync
+ *  reads clearly on a small phone screen. */
 export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
   const d = rig.defaults;
 
@@ -45,41 +45,83 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
   const lowerDown = (bs.mouthLowerDownLeft + bs.mouthLowerDownRight) * 0.5;
   const mouthShiftX = (bs.mouthRight - bs.mouthLeft) * 0.05;
 
-  // Mouth cavity opens with jaw and wide stretch (laughing); narrows on pucker.
+  // Effective jaw open: jawOpen + funnel/stretch contribute a little so vowels
+  // like "oo" / "ee" still split the lips visibly even when jawOpen is small.
+  const jawDrop = Math.min(1, open + funnel * 0.25 + lowerDown * 0.2);
+
+  // Jaw pivot — drops the lower face by up to ~22°, which is the difference
+  // between a Memoji that "talks" vs. one that just stretches its mouth.
+  rig.parts.jaw.rotation.x = d.jawRotation.x - jawDrop * 0.38;
+
+  // Mouth cavity opens dramatically with jaw; widens on stretch (laughing),
+  // narrows on pucker (kissing). Doubled vs. the original so the dark interior
+  // is unambiguously visible during speech.
   rig.parts.mouthCavity.scale.set(
     d.mouthCavityScale.x * (1 - 0.4 * pucker + 0.3 * stretch + 0.2 * smile),
-    d.mouthCavityScale.y + open * 1.2 + lowerDown * 0.25,
+    d.mouthCavityScale.y + jawDrop * 2.4 + lowerDown * 0.3,
     d.mouthCavityScale.z * (1 + 0.3 * pucker + 0.15 * funnel),
   );
 
-  // Outer lips: widen on smile/stretch, pinch on pucker, droop slightly on frown.
-  rig.parts.lipsOuter.scale.set(
-    d.lipsOuterScale.x * (1 - 0.4 * pucker + 0.35 * smile + 0.25 * stretch - 0.1 * frown),
-    d.lipsOuterScale.y * (1 + 0.6 * open + 0.25 * upperUp + 0.25 * lowerDown) * (1 - 0.3 * close),
-    d.lipsOuterScale.z * (1 + 0.25 * pucker + 0.15 * funnel),
+  // Upper lip: rises slightly on jaw open + upperUp; widens on smile/stretch.
+  rig.parts.lipUpper.position.set(
+    d.lipUpperPosition.x,
+    d.lipUpperPosition.y + jawDrop * 0.04 + upperUp * 0.05,
+    d.lipUpperPosition.z,
   );
-  // Smile rotates the torus forward at the bottom for a deeper curve; frown
-  // rotates the opposite way for a downturned mouth.
-  rig.parts.lipsOuter.rotation.set(
-    d.lipsOuterRotation.x - smile * 0.25 + frown * 0.35,
-    d.lipsOuterRotation.y,
-    d.lipsOuterRotation.z + (smileL - smileR) * 0.1 + (frownR - frownL) * 0.08,
+  rig.parts.lipUpper.scale.set(
+    d.lipUpperScale.x * (1 - 0.4 * pucker + 0.35 * smile + 0.25 * stretch - 0.1 * frown),
+    d.lipUpperScale.y * (1 + 0.15 * upperUp - 0.2 * close),
+    d.lipUpperScale.z * (1 + 0.25 * pucker + 0.15 * funnel),
+  );
+  rig.parts.lipUpper.rotation.set(
+    d.lipUpperRotation.x,
+    d.lipUpperRotation.y,
+    d.lipUpperRotation.z + (smileL - smileR) * 0.08,
   );
 
-  // Mouth group: corners ride up with smile, droop with frown; horizontal shift
-  // for asymmetric mouthLeft/mouthRight; jaw drop pulls the whole mouth down.
+  // Lower lip: drops with jaw and lowerDown — this is the main lip-sync motion.
+  rig.parts.lipLower.position.set(
+    d.lipLowerPosition.x,
+    d.lipLowerPosition.y - jawDrop * 0.32 - lowerDown * 0.1,
+    d.lipLowerPosition.z,
+  );
+  rig.parts.lipLower.scale.set(
+    d.lipLowerScale.x * (1 - 0.4 * pucker + 0.35 * smile + 0.25 * stretch - 0.1 * frown),
+    d.lipLowerScale.y * (1 + 0.4 * jawDrop + 0.2 * lowerDown - 0.25 * close),
+    d.lipLowerScale.z * (1 + 0.25 * pucker + 0.15 * funnel),
+  );
+  rig.parts.lipLower.rotation.set(
+    d.lipLowerRotation.x,
+    d.lipLowerRotation.y,
+    d.lipLowerRotation.z + (frownR - frownL) * 0.08,
+  );
+
+  // Teeth follow the jaw drop a touch so they ride with the lower lip.
+  rig.parts.teethUpper.position.set(
+    d.teethUpperPosition.x,
+    d.teethUpperPosition.y - jawDrop * 0.02,
+    d.teethUpperPosition.z,
+  );
+  rig.parts.teethLower.position.set(
+    d.teethLowerPosition.x,
+    d.teethLowerPosition.y - jawDrop * 0.18,
+    d.teethLowerPosition.z,
+  );
+
+  // Mouth group: corners ride up with smile, droop with frown; horizontal
+  // shift for asymmetric mouthLeft/mouthRight.
   rig.parts.mouthGroup.position.set(
     d.mouthGroup.position.x + mouthShiftX,
-    d.mouthGroup.position.y + 0.04 * smile - 0.05 * frown - 0.05 * open,
+    d.mouthGroup.position.y + 0.04 * smile - 0.05 * frown,
     d.mouthGroup.position.z + 0.01 * pucker,
   );
 
   // Tongue: hidden behind the lips at rest, slides forward + down when out.
   // Only visible when the mouth is also open so it doesn't poke through the lips.
-  const tongueOut = bs.tongueOut * Math.min(1, open * 1.5 + 0.2);
+  const tongueOut = bs.tongueOut * Math.min(1, jawDrop * 1.5 + 0.2);
   rig.parts.tongue.position.set(
     d.tonguePosition.x,
-    d.tonguePosition.y - 0.04 * tongueOut,
+    d.tonguePosition.y - 0.04 * tongueOut - jawDrop * 0.05,
     d.tonguePosition.z + 0.18 * tongueOut,
   );
   rig.parts.tongue.scale.set(
@@ -98,6 +140,14 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
   rig.parts.lidLeftUpper.scale.y = d.lidLeftScale.y + (1.0 - d.lidLeftScale.y) * lidL;
   rig.parts.lidRightUpper.scale.y = d.lidRightScale.y + (1.0 - d.lidRightScale.y) * lidR;
 
+  // Lower lid: rises modestly on squint to give a real squint silhouette.
+  const lowerLidL = Math.min(1, bs.eyeSquintLeft * 0.85 + bs.cheekSquintLeft * 0.6);
+  const lowerLidR = Math.min(1, bs.eyeSquintRight * 0.85 + bs.cheekSquintRight * 0.6);
+  rig.parts.lidLeftLower.scale.y =
+    d.lidLowerLeftScale.y + (0.55 - d.lidLowerLeftScale.y) * lowerLidL;
+  rig.parts.lidRightLower.scale.y =
+    d.lidLowerRightScale.y + (0.55 - d.lidLowerRightScale.y) * lowerLidR;
+
   // Eye widening (surprise / fear) scales the eyeball up slightly.
   const wideL = bs.eyeWideLeft;
   const wideR = bs.eyeWideRight;
@@ -113,9 +163,6 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
   );
 
   // Eye gaze ----------------------------------------------------------------
-  // For the LEFT eye (user's left, screen right after mirror), looking IN
-  // means rotating its iris toward +x in local space; with our mirror group
-  // that maps correctly because the mirror only flips visuals, not local axes.
   const leftYaw = (bs.eyeLookOutLeft - bs.eyeLookInLeft) * 0.35;
   const rightYaw = (bs.eyeLookInRight - bs.eyeLookOutRight) * 0.35;
   const leftPitch = (bs.eyeLookDownLeft - bs.eyeLookUpLeft) * 0.3;
@@ -124,15 +171,12 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
   rig.parts.irisRight.rotation.set(rightPitch, rightYaw, 0);
 
   // Brows -------------------------------------------------------------------
-  // Anger: sharp inner-down. Sad/cry: inner-up + outer-down. Sneer drags the
-  // inner edge further down, so we add a small extra to browDown when sneering.
   const angerL = bs.browDownLeft + sneer * 0.4;
   const angerR = bs.browDownRight + sneer * 0.4;
   const browLY =
     bs.browOuterUpLeft * 0.05 + bs.browInnerUp * 0.04 - angerL * 0.05 - frownL * 0.015;
   const browRY =
     bs.browOuterUpRight * 0.05 + bs.browInnerUp * 0.04 - angerR * 0.05 - frownR * 0.015;
-  // Inner brows pinch toward centre on anger; flare outward on sad (browInnerUp).
   const browLX = -angerL * 0.04 + bs.browInnerUp * 0.015 * -1;
   const browRX = angerR * 0.04 + bs.browInnerUp * 0.015;
   rig.parts.browLeft.position.set(
@@ -140,8 +184,6 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
     d.browLeft.position.y + browLY,
     d.browLeft.position.z,
   );
-  // Anger tilts the inner end of the brow down (positive z-rotation on the
-  // left brow lifts the inner end visually; negate to drop it).
   rig.parts.browLeft.rotation.set(
     d.browLeft.rotation.x,
     d.browLeft.rotation.y,
@@ -160,8 +202,8 @@ export function applyExpression(rig: AvatarRig, bs: BlendshapeMap) {
 
   // Nose: sneer scrunches it slightly (visual cue for anger / disgust).
   rig.parts.nose.scale.set(
-    1.0 * (1 - sneer * 0.06),
-    0.95 * (1 - sneer * 0.1),
+    0.95 * (1 - sneer * 0.06),
+    1.05 * (1 - sneer * 0.1),
     0.85 * (1 + sneer * 0.05),
   );
 }
