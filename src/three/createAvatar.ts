@@ -107,6 +107,11 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   const hair = buildHair(cfg, materials, xGeoms, xMats);
   head.add(hair);
 
+  // ---- Permanent blush (woman only) -----------------------------------------
+  if (cfg.hasBlush) {
+    buildBlush(head, cfg, xGeoms, xMats);
+  }
+
   // ---- Eyes -----------------------------------------------------------------
   const sceleraR = cfg.eyeRadius;
   const eyeOffsetX = cfg.eyeOffsetX;
@@ -353,47 +358,48 @@ function buildHair(
     }
 
   } else if (cfg.hairStyle === 'woman') {
-    // Larger cap that extends further down the sides of the head.
-    const capGeom = new THREE.SphereGeometry(0.965, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    // Memoji-style long straight hair:
+    //  1. Smooth cap on top (no clumpy tufts — clean center part)
+    //  2. Two large side curtains hanging well below the chin
+    //  3. Wide back panel to complete the volume
+    //  4. Thin face-framing strips that frame the cheeks
+
+    // --- smooth top cap ---
+    const capGeom = new THREE.SphereGeometry(0.972, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.58);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
-    cap.position.set(0, 0.02, 0);
+    cap.position.set(0, 0.015, 0);
     hair.add(cap);
 
-    const tuftGeom = new THREE.SphereGeometry(1, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    xGeoms.push(tuftGeom);
-    const TUFTS: Array<{ pos: [number, number, number]; rot: [number, number, number]; scale: [number, number, number] }> = [
-      { pos: [-0.4, 0.76, 0.50], rot: [-0.55, 0.3, 0.3], scale: [0.35, 0.27, 0.35] },
-      { pos: [0.05, 0.84, 0.52], rot: [-0.62, 0.0, 0.0], scale: [0.38, 0.30, 0.38] },
-      { pos: [0.45, 0.76, 0.46], rot: [-0.55, -0.3, -0.3], scale: [0.35, 0.27, 0.35] },
-      { pos: [-0.10, 0.88, 0.22], rot: [-0.22, 0.0, 0.0], scale: [0.36, 0.26, 0.36] },
-      { pos: [-0.55, 0.64, 0.40], rot: [-0.48, 0.42, 0.42], scale: [0.30, 0.21, 0.30] },
-      { pos: [0.58, 0.62, 0.38], rot: [-0.48, -0.42, -0.42], scale: [0.30, 0.21, 0.30] },
-    ];
-    for (const t of TUFTS) {
-      const m = new THREE.Mesh(tuftGeom, materials.hair);
-      m.position.fromArray(t.pos);
-      m.rotation.fromArray(t.rot);
-      m.scale.fromArray(t.scale);
-      hair.add(m);
+    // --- main side curtains (left / right, mirrored) ---
+    // Each is a wide, tall, thin ellipsoid — the "curtain" of long straight hair.
+    const curtainGeom = new THREE.SphereGeometry(0.20, 18, 14);
+    xGeoms.push(curtainGeom);
+    for (const side of [-1, 1] as const) {
+      const c = new THREE.Mesh(curtainGeom, materials.hair);
+      c.position.set(side * 0.70, -0.70, 0.06);
+      c.scale.set(1.65, 5.10, 0.54);  // ~0.66 wide, ~2.04 tall, ~0.22 deep
+      c.rotation.set(0, side * 0.06, side * -0.04);
+      hair.add(c);
     }
 
-    // Long side strands hanging down from each side of the head.
-    const strandGeom = new THREE.SphereGeometry(0.18, 12, 12);
-    xGeoms.push(strandGeom);
-    const STRANDS: Array<{ pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }> = [
-      { pos: [0.81, -0.08, 0.28], scale: [0.16, 0.82, 0.15], rot: [0.08, 0.0, 0.10] },
-      { pos: [0.87, -0.24, -0.06], scale: [0.14, 0.95, 0.14], rot: [0.0, 0.0, 0.14] },
-      { pos: [0.74, -0.14, 0.52], scale: [0.15, 0.72, 0.14], rot: [-0.10, 0.0, 0.06] },
-    ];
-    for (const s of STRANDS) {
-      for (const side of [-1, 1] as const) {
-        const m = new THREE.Mesh(strandGeom, materials.hair);
-        m.position.set(s.pos[0] * side, s.pos[1], s.pos[2]);
-        m.scale.fromArray(s.scale);
-        m.rotation.set(s.rot[0], s.rot[1], s.rot[2] * side);
-        hair.add(m);
-      }
+    // --- back panel (wide sheet behind the head) ---
+    const backGeom = new THREE.SphereGeometry(0.22, 18, 14);
+    xGeoms.push(backGeom);
+    const back = new THREE.Mesh(backGeom, materials.hair);
+    back.position.set(0, -0.80, -0.46);
+    back.scale.set(2.30, 5.30, 0.48);  // ~1.01 wide, ~2.33 tall, ~0.21 deep
+    hair.add(back);
+
+    // --- face-framing strips (thin curtain close to cheeks) ---
+    const frameGeom = new THREE.SphereGeometry(0.14, 14, 10);
+    xGeoms.push(frameGeom);
+    for (const side of [-1, 1] as const) {
+      const f = new THREE.Mesh(frameGeom, materials.hair);
+      f.position.set(side * 0.56, -0.44, 0.52);
+      f.scale.set(0.82, 4.90, 0.36);  // ~0.23 wide, ~1.37 tall, ~0.10 deep
+      f.rotation.set(-0.04, side * 0.10, side * -0.03);
+      hair.add(f);
     }
 
   } else if (cfg.hairStyle === 'man') {
@@ -483,6 +489,42 @@ function buildLashes(
       lash.rotation.set(-0.3, 0, fanAngle);
       head.add(lash);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Permanent blush (woman) — always-visible rose discs on each cheek
+// ---------------------------------------------------------------------------
+
+function buildBlush(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  const blushMat = new THREE.MeshStandardMaterial({
+    color: cfg.blushColor,
+    transparent: true,
+    opacity: 0.30,
+    roughness: 0.7,
+    metalness: 0.0,
+  });
+  xMats.push(blushMat);
+
+  // Two very flat ellipsoid discs sitting on the face surface of the skull.
+  const blushGeom = new THREE.SphereGeometry(0.22, 18, 14);
+  xGeoms.push(blushGeom);
+
+  for (const side of [-1, 1] as const) {
+    const b = new THREE.Mesh(blushGeom, blushMat);
+    b.position.set(
+      side * (cfg.cheekOffsetX - 0.06),
+      cfg.cheekOffsetY + 0.04,
+      cfg.cheekOffsetZ + 0.12,
+    );
+    // Very flat disk pressed against the skin surface.
+    b.scale.set(1.05, 0.86, 0.12);
+    head.add(b);
   }
 }
 
