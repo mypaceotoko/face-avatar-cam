@@ -1,26 +1,26 @@
 import * as THREE from 'three';
 
-// Reference image is the iOS Memoji creation screen — yellow emoji-style skin,
-// dark brown sculpted hair, big eyes with chocolate-brown irises, pink mouth.
-// All colours below are picked from that look but rendered with custom Three.js
-// geometry only (no Apple assets, no VRM, all original meshes).
+// Tuned away from the iOS Memoji yellow toward a warm human-skin palette while
+// keeping the stylised character look. The avatar still uses the same rig
+// (single lipsOuter torus, fade-in cheeks, fade-in teeth, big readable iris)
+// but the colours read as a person rather than an emoji.
 export const PALETTE = {
-  skin: 0xf6c945,
-  skinShade: 0xcaa017,
-  cheek: 0xf2b56a, // warmer skin tone for the cheek puff that lifts on smile
-  hair: 0x3a2218,
-  hairHighlight: 0x4d2d1d,
-  brow: 0x2c1810,
-  sclera: 0xffffff,
-  // Slightly brighter, more saturated brown — readable iris is the
-  // single biggest "is this thing alive" cue at thumbnail size.
-  iris: 0x6a3a1d,
-  pupil: 0x0a0a0a,
+  skin: 0xe8b89c,
+  skinShade: 0xc88f72, // used by the neck so the chin->neck transition reads
+  cheek: 0xd97a6b, // pinker blush that fades in on smile/laugh
+  hair: 0x2c1a12,
+  hairHighlight: 0x4a2d1d,
+  brow: 0x2c1a12,
+  sclera: 0xfaf6f0,
+  // Readable mid-brown iris — still the single biggest "alive" cue at
+  // thumbnail size, but warmer than a saturated chocolate brown.
+  iris: 0x5a3320,
+  pupil: 0x0a0807,
   hilite: 0xffffff,
-  lip: 0xc24c50,
-  mouthCavity: 0x4a1414,
-  tongue: 0xe46a7a,
-  teeth: 0xf6f1e6,
+  lip: 0xb05a55, // toned-down rose, closer to natural lip than primary red
+  mouthCavity: 0x3a0e0e,
+  tongue: 0xd86878,
+  teeth: 0xf5ece0,
 };
 
 export type AvatarMaterials = {
@@ -40,10 +40,14 @@ export type AvatarMaterials = {
 };
 
 export function createAvatarMaterials(): AvatarMaterials {
+  // Skin: high roughness so it reads as matte human skin, with a tiny emissive
+  // tint so cheeks/jaw never fall to pure black under our two-light rig.
   const skin = new THREE.MeshStandardMaterial({
     color: PALETTE.skin,
-    roughness: 0.42,
+    roughness: 0.78,
     metalness: 0.0,
+    emissive: 0x2a1208,
+    emissiveIntensity: 0.18,
   });
   const cheek = new THREE.MeshStandardMaterial({
     color: PALETTE.cheek,
