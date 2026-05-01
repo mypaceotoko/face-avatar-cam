@@ -38,11 +38,13 @@ function amp(v: number, gain: number, knee = 0.04): number {
 }
 
 // Stronger curve for jaw — readable mouth open is the #1 priority.
+// Gain 3.2, knee 0.015 so even small jaw drops register as visible open,
+// giving crisp lip-sync.
 function ampMouth(v: number): number {
-  return amp(v, 2.6, 0.03);
+  return amp(v, 3.2, 0.015);
 }
 function ampSmile(v: number): number {
-  return amp(v, 2.2, 0.06);
+  return amp(v, 2.4, 0.05);
 }
 function ampBrow(v: number): number {
   return amp(v, 2.3, 0.05);

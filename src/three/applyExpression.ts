@@ -53,50 +53,48 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   const lowerDown = m.lowerDrop;
 
   // Outer lips: WIDE on smile, NARROW on pucker, TALL on open.
+  // Y factor raised from 1.6 to 2.2 so syllables drive a much more visible
+  // jaw drop — the primary cue for lip-sync readability.
   rig.parts.lipsOuter.scale.set(
     d.lipsOuterScale.x *
-      (1 + 0.55 * smile + 0.4 * m.stretch - 0.55 * pucker - 0.25 * funnel),
+      (1 + 0.60 * smile + 0.45 * m.stretch - 0.55 * pucker - 0.25 * funnel),
     d.lipsOuterScale.y *
-      (1 + 1.6 * open + 0.5 * upperUp + 0.5 * lowerDown) *
+      (1 + 2.2 * open + 0.55 * upperUp + 0.55 * lowerDown) *
       (1 - 0.3 * close),
-    d.lipsOuterScale.z * (1 + 0.45 * pucker + 0.25 * funnel - 0.15 * smile),
+    d.lipsOuterScale.z * (1 + 0.50 * pucker + 0.28 * funnel - 0.15 * smile),
   );
-  // Smile tilts the lower edge of the torus forward (deeper grin curve);
-  // frown does the opposite. Z-rotation reflects asymmetric smile sides for
-  // the natural "smirk" angle.
   rig.parts.lipsOuter.rotation.set(
-    d.lipsOuterRotation.x - smile * 0.4 + frown * 0.45 - open * 0.1,
+    d.lipsOuterRotation.x - smile * 0.4 + frown * 0.45 - open * 0.12,
     d.lipsOuterRotation.y,
-    d.lipsOuterRotation.z + (smileL - smileR) * 0.16 + (m.shiftX) * 0.08,
+    d.lipsOuterRotation.z + (smileL - smileR) * 0.18 + m.shiftX * 0.08,
   );
 
-  // Mouth cavity: scaled vertically with jaw open, horizontally narrowed by
-  // pucker so it doesn't bleed past the lips.
+  // Mouth cavity: raised factor (2.4→3.2) so the dark interior opens
+  // dramatically — contrast between closed and open drives the lip-sync read.
   rig.parts.mouthCavity.scale.set(
-    d.mouthCavityScale.x * (1 - 0.4 * pucker + 0.3 * m.stretch + 0.2 * smile),
-    d.mouthCavityScale.y + open * 2.4 + lowerDown * 0.5,
+    d.mouthCavityScale.x * (1 - 0.4 * pucker + 0.35 * m.stretch + 0.2 * smile),
+    d.mouthCavityScale.y + open * 3.2 + lowerDown * 0.7,
     d.mouthCavityScale.z * (1 + 0.3 * pucker + 0.15 * funnel),
   );
 
-  // Mouth group: corners ride up with smile, drop with frown. Increased Y
-  // delta from 0.04 to 0.08 so the curve change is obvious.
+  // Mouth group: corners up on smile, down on frown, jaw drops whole group.
   rig.parts.mouthGroup.position.set(
     d.mouthGroup.position.x + m.shiftX * 0.06,
-    d.mouthGroup.position.y + 0.08 * smile - 0.07 * frown - 0.06 * open,
+    d.mouthGroup.position.y + 0.09 * smile - 0.07 * frown - 0.08 * open,
     d.mouthGroup.position.z + 0.012 * pucker,
   );
 
-  // Teeth: scale + fade in with mouth open. Top of the row also lifts on
-  // smile so we get the "showing teeth" grin.
-  const teethVis = m.teethVisible;
+  // Teeth: scale + fade in with mouth open. Fade-in threshold lowered so
+  // teeth appear earlier to reinforce the open-mouth contrast.
+  const teethVis = clamp(open * 1.8 - 0.04 + smile * 0.45, 0, 1);
   rig.parts.teeth.scale.set(
-    d.teethScale.x * (1 + 0.3 * smile - 0.3 * pucker),
-    d.teethScale.y * (1 + 0.6 * open),
+    d.teethScale.x * (1 + 0.35 * smile - 0.3 * pucker),
+    d.teethScale.y * (1 + 0.7 * open),
     d.teethScale.z,
   );
   rig.parts.teeth.position.set(
     d.teethPosition.x,
-    d.teethPosition.y + 0.04 * open - 0.01 * frown + 0.01 * smile,
+    d.teethPosition.y + 0.05 * open - 0.01 * frown + 0.01 * smile,
     d.teethPosition.z,
   );
   (rig.materials.teeth as THREE.MeshStandardMaterial).opacity = teethVis;

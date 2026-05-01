@@ -1,26 +1,13 @@
 import * as THREE from 'three';
+import { CHARACTERS, type CharacterConfig, type CharacterType } from './avatarCharacters';
 import { createAvatarMaterials, type AvatarMaterials } from './avatarMaterials';
 
-// Local model space: head ~0.9 unit radius. The caller scales the outer group
-// to centimetres (~14) so the avatar matches a real face when the
-// FaceLandmarker transformation matrix is applied.
-//
-// Avatar parts grew during the expression pass:
-//   - Bigger eyes (sceleraR 0.18, eyeOffsetX 0.30) for a more readable iris
-//     at thumbnail size.
-//   - Lower eyelids: skin half-spheres that rise on squint to give a real
-//     "eye smile" instead of just closing from the top.
-//   - Cheeks: faded skin lobes that bloom on smile/laugh so the corners of
-//     the mouth get supported.
-//   - Teeth: a flat row behind the lips, alpha 0 by default; faded in by
-//     applyExpression when the mouth opens.
-//   - Mouth corner anchors so the grin/frown rotation reads at distance.
+// Avatar coordinate system: skull radius ≈ 0.9 units.
+// The caller (useAvatarRig) scales the root to ~14 cm so it matches the
+// FaceLandmarker transformation matrix.
 
 export type AvatarRig = {
-  /** Outer group placed in the scene. The caller writes the head matrix to
-   *  this group. */
   root: THREE.Group;
-  /** Inner pivot at the head center. */
   head: THREE.Group;
   parts: {
     skull: THREE.Mesh;
@@ -70,11 +57,24 @@ export type AvatarRig = {
   dispose: () => void;
 };
 
-export function createAvatar(): AvatarRig {
-  const materials = createAvatarMaterials();
+export function createAvatar(characterType: CharacterType = 'child'): AvatarRig {
+  const cfg = CHARACTERS[characterType];
+  const materials = createAvatarMaterials({
+    skin: cfg.skinColor,
+    cheek: cfg.cheekColor,
+    hair: cfg.hairColor,
+    brow: cfg.browColor,
+    iris: cfg.irisColor,
+    lip: cfg.lipColor,
+  });
+
+  // Extra geometries/materials created for optional features, disposed alongside
+  // the main ones.
+  const xGeoms: THREE.BufferGeometry[] = [];
+  const xMats: THREE.Material[] = [];
+
   const root = new THREE.Group();
   root.name = 'avatarRoot';
-
   const head = new THREE.Group();
   head.name = 'avatarHead';
   root.add(head);
@@ -82,75 +82,42 @@ export function createAvatar(): AvatarRig {
   // ---- Skull ----------------------------------------------------------------
   const skullGeom = new THREE.SphereGeometry(0.9, 64, 64);
   const skull = new THREE.Mesh(skullGeom, materials.skin);
-  skull.scale.set(1.0, 1.05, 0.95);
+  skull.scale.set(cfg.headScaleX, cfg.headScaleY, cfg.headScaleZ);
   head.add(skull);
 
   // ---- Nose -----------------------------------------------------------------
-  const noseGeom = new THREE.SphereGeometry(0.1, 24, 24);
+  const noseGeom = new THREE.SphereGeometry(cfg.noseRadius, 24, 24);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
-  nose.position.set(0, -0.05, 0.92);
-  nose.scale.set(1.0, 0.95, 0.85);
+  nose.position.set(0, cfg.noseOffsetY, cfg.noseZ);
+  nose.scale.set(cfg.noseScaleX, cfg.noseScaleY, cfg.noseScaleZ);
   head.add(nose);
 
   // ---- Ears -----------------------------------------------------------------
-  const earGeom = new THREE.SphereGeometry(0.13, 20, 20);
+  const earGeom = new THREE.SphereGeometry(cfg.earRadius, 20, 20);
   const earLeft = new THREE.Mesh(earGeom, materials.skin);
-  earLeft.position.set(-0.85, 0.0, 0.0);
+  earLeft.position.set(-cfg.earOffsetX, 0.0, 0.0);
   earLeft.scale.set(0.55, 1.0, 0.45);
   head.add(earLeft);
   const earRight = new THREE.Mesh(earGeom, materials.skin);
-  earRight.position.set(0.85, 0.0, 0.0);
+  earRight.position.set(cfg.earOffsetX, 0.0, 0.0);
   earRight.scale.set(0.55, 1.0, 0.45);
   head.add(earRight);
 
-  // ---- Hair (sculpted clumps) ----------------------------------------------
-  const hair = new THREE.Group();
-  hair.name = 'hair';
-  const capGeom = new THREE.SphereGeometry(0.94, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.55);
-  const cap = new THREE.Mesh(capGeom, materials.hair);
-  cap.position.set(0, 0.02, 0);
-  hair.add(cap);
-
-  const tuftGeom = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
-  const TUFTS: Array<{
-    pos: [number, number, number];
-    rot: [number, number, number];
-    scale: [number, number, number];
-  }> = [
-    { pos: [-0.55, 0.62, 0.45], rot: [-0.5, 0.4, 0.4], scale: [0.32, 0.22, 0.32] },
-    { pos: [-0.25, 0.72, 0.55], rot: [-0.6, 0.1, 0.15], scale: [0.34, 0.26, 0.34] },
-    { pos: [0.05, 0.78, 0.55], rot: [-0.65, -0.05, -0.02], scale: [0.36, 0.28, 0.36] },
-    { pos: [0.32, 0.74, 0.5], rot: [-0.6, -0.2, -0.2], scale: [0.34, 0.26, 0.34] },
-    { pos: [0.6, 0.6, 0.4], rot: [-0.5, -0.45, -0.4], scale: [0.32, 0.22, 0.32] },
-    { pos: [-0.45, 0.78, 0.2], rot: [-0.2, 0.4, 0.4], scale: [0.3, 0.22, 0.3] },
-    { pos: [-0.05, 0.86, 0.25], rot: [-0.25, 0.0, 0.0], scale: [0.34, 0.24, 0.34] },
-    { pos: [0.4, 0.82, 0.2], rot: [-0.2, -0.3, -0.35], scale: [0.32, 0.22, 0.32] },
-    { pos: [-0.35, 0.5, 0.7], rot: [-0.9, 0.3, 0.3], scale: [0.22, 0.16, 0.22] },
-    { pos: [0.15, 0.5, 0.78], rot: [-0.95, -0.05, 0.05], scale: [0.24, 0.18, 0.24] },
-    { pos: [0.42, 0.48, 0.7], rot: [-0.9, -0.3, -0.3], scale: [0.22, 0.16, 0.22] },
-  ];
-  for (const t of TUFTS) {
-    const m = new THREE.Mesh(tuftGeom, materials.hair);
-    m.position.fromArray(t.pos);
-    m.rotation.fromArray(t.rot);
-    m.scale.fromArray(t.scale);
-    hair.add(m);
-  }
+  // ---- Hair -----------------------------------------------------------------
+  const hair = buildHair(cfg, materials, xGeoms, xMats);
   head.add(hair);
 
   // ---- Eyes -----------------------------------------------------------------
-  // Bumped from 0.16/0.27 to give the avatar a more cartoony, expressive read
-  // at small sizes — eye area is the #1 driver of perceived emotion.
-  const eyeOffsetX = 0.30;
-  const eyeY = 0.10;
-  const eyeZ = 0.78;
-  const sceleraR = 0.18;
+  const sceleraR = cfg.eyeRadius;
+  const eyeOffsetX = cfg.eyeOffsetX;
+  const eyeY = cfg.eyeOffsetY;
+  const eyeZ = cfg.eyeZ;
 
   const sceleraGeom = new THREE.SphereGeometry(sceleraR, 32, 32);
-  const irisGeom = new THREE.CircleGeometry(0.11, 32);
-  const irisRingGeom = new THREE.RingGeometry(0.10, 0.115, 32);
-  const pupilGeom = new THREE.CircleGeometry(0.052, 24);
-  const hiliteGeom = new THREE.CircleGeometry(0.022, 16);
+  const irisGeom = new THREE.CircleGeometry(cfg.irisRadius, 32);
+  const irisRingGeom = new THREE.RingGeometry(cfg.irisRadius * 0.91, cfg.irisRadius * 1.045, 32);
+  const pupilGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.47, 24);
+  const hiliteGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.20, 16);
 
   function makeEye(side: -1 | 1) {
     const g = new THREE.Group();
@@ -166,7 +133,6 @@ export function createAvatar(): AvatarRig {
     iris.position.set(0, 0, sceleraR + 0.001);
     irisRoot.add(iris);
 
-    // Dark outer ring for a stronger iris silhouette.
     const ring = new THREE.Mesh(
       irisRingGeom,
       new THREE.MeshBasicMaterial({ color: 0x1a0d04 }),
@@ -179,27 +145,19 @@ export function createAvatar(): AvatarRig {
     irisRoot.add(pupil);
 
     const hilite = new THREE.Mesh(hiliteGeom, materials.hilite);
-    hilite.position.set(-0.03 * side, 0.035, sceleraR + 0.003);
+    hilite.position.set(-0.03 * side, cfg.irisRadius * 0.32, sceleraR + 0.003);
     irisRoot.add(hilite);
 
     return { g, irisRoot, ring };
   }
+
   const left = makeEye(-1);
   const right = makeEye(1);
   head.add(left.g);
   head.add(right.g);
 
   // ---- Eyelids --------------------------------------------------------------
-  // Upper lid: sits just above the eye, scale.y=0.05 at rest, ~1.0 closed.
-  const lidUpperGeom = new THREE.SphereGeometry(
-    sceleraR + 0.005,
-    24,
-    24,
-    0,
-    Math.PI * 2,
-    0,
-    Math.PI / 2,
-  );
+  const lidUpperGeom = new THREE.SphereGeometry(sceleraR + 0.005, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2);
   const lidLeftUpper = new THREE.Mesh(lidUpperGeom, materials.skin);
   lidLeftUpper.position.set(-eyeOffsetX, eyeY, eyeZ);
   lidLeftUpper.scale.y = 0.05;
@@ -209,20 +167,10 @@ export function createAvatar(): AvatarRig {
   lidRightUpper.scale.y = 0.05;
   head.add(lidRightUpper);
 
-  // Lower lid: lower hemisphere; rises on squint. We position the lower half
-  // sphere "downside up" (rotation) so its open edge faces up.
-  const lidLowerGeom = new THREE.SphereGeometry(
-    sceleraR + 0.005,
-    24,
-    24,
-    0,
-    Math.PI * 2,
-    0,
-    Math.PI / 2,
-  );
+  const lidLowerGeom = new THREE.SphereGeometry(sceleraR + 0.005, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2);
   const lidLeftLower = new THREE.Mesh(lidLowerGeom, materials.skin);
   lidLeftLower.position.set(-eyeOffsetX, eyeY - sceleraR * 0.35, eyeZ);
-  lidLeftLower.rotation.x = Math.PI; // flip so the dome points down
+  lidLeftLower.rotation.x = Math.PI;
   lidLeftLower.scale.y = 0.05;
   head.add(lidLeftLower);
   const lidRightLower = new THREE.Mesh(lidLowerGeom, materials.skin);
@@ -231,74 +179,79 @@ export function createAvatar(): AvatarRig {
   lidRightLower.scale.y = 0.05;
   head.add(lidRightLower);
 
+  // ---- Eyelashes (woman only) -----------------------------------------------
+  if (cfg.hasLashes) {
+    buildLashes(head, cfg, xGeoms, xMats);
+  }
+
   // ---- Eyebrows -------------------------------------------------------------
-  // Slightly bigger and a touch higher than before; the bolder Z gives a real
-  // shadow line that reads at thumbnail size.
-  const browGeom = new THREE.BoxGeometry(0.30, 0.07, 0.07);
+  const browGeom = new THREE.BoxGeometry(cfg.browWidth, cfg.browHeight, cfg.browDepth);
   const browLeft = new THREE.Mesh(browGeom, materials.brow);
-  browLeft.position.set(-0.30, 0.36, 0.83);
-  browLeft.rotation.set(0, -0.18, 0.06);
+  browLeft.position.set(-cfg.browOffsetX, cfg.browOffsetY, cfg.browOffsetZ);
+  browLeft.rotation.set(0, -cfg.browRotY, cfg.browRotZInner);
   head.add(browLeft);
   const browRight = new THREE.Mesh(browGeom, materials.brow);
-  browRight.position.set(0.30, 0.36, 0.83);
-  browRight.rotation.set(0, 0.18, -0.06);
+  browRight.position.set(cfg.browOffsetX, cfg.browOffsetY, cfg.browOffsetZ);
+  browRight.rotation.set(0, cfg.browRotY, -cfg.browRotZInner);
   head.add(browRight);
 
-  // ---- Cheeks --------------------------------------------------------------
-  // Alpha-faded skin lobes; rise + fade in on smile/laugh to support corner-up.
-  const cheekGeom = new THREE.SphereGeometry(0.22, 20, 20);
+  // ---- Cheeks ---------------------------------------------------------------
+  const cheekGeom = new THREE.SphereGeometry(cfg.cheekRadius, 20, 20);
   const cheekLeft = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekLeft.position.set(-0.45, -0.15, 0.65);
+  cheekLeft.position.set(-cfg.cheekOffsetX, cfg.cheekOffsetY, cfg.cheekOffsetZ);
   cheekLeft.scale.set(0.7, 0.6, 0.5);
   head.add(cheekLeft);
   const cheekRight = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekRight.position.set(0.45, -0.15, 0.65);
+  cheekRight.position.set(cfg.cheekOffsetX, cfg.cheekOffsetY, cfg.cheekOffsetZ);
   cheekRight.scale.set(0.7, 0.6, 0.5);
   head.add(cheekRight);
 
+  // ---- Beard (uncle / grandpa) ----------------------------------------------
+  if (cfg.hasBeard) {
+    buildBeard(head, cfg, xGeoms, xMats);
+  }
+
   // ---- Mouth ----------------------------------------------------------------
   const mouthGroup = new THREE.Group();
-  mouthGroup.position.set(0, -0.34, 0.82);
+  mouthGroup.position.set(0, cfg.mouthOffsetY, cfg.mouthOffsetZ);
   head.add(mouthGroup);
 
-  // Outer lips: a torus we squash + rotate to read as a mouth shape. Slightly
-  // taller default than before so the mouth has visible volume even at rest.
-  const lipsGeom = new THREE.TorusGeometry(0.18, 0.045, 16, 48);
+  const lipsGeom = new THREE.TorusGeometry(cfg.lipTorusRadius, cfg.lipTubeRadius, 16, 48);
   const lipsOuter = new THREE.Mesh(lipsGeom, materials.lip);
   lipsOuter.scale.set(1.0, 0.55, 0.6);
   lipsOuter.rotation.x = -0.1;
   mouthGroup.add(lipsOuter);
 
-  // Mouth cavity: dark hemisphere behind the lips. Stretches vertically when
-  // jaw opens. Default scale.y is small so the closed mouth doesn't show black.
-  const cavityGeom = new THREE.SphereGeometry(
-    0.16,
-    24,
-    24,
-    0,
-    Math.PI * 2,
-    Math.PI / 2,
-    Math.PI / 2,
-  );
+  const cavityR = cfg.lipTorusRadius * 0.89;
+  const cavityGeom = new THREE.SphereGeometry(cavityR, 24, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
   const mouthCavity = new THREE.Mesh(cavityGeom, materials.mouthCavity);
   mouthCavity.position.set(0, 0, -0.02);
   mouthCavity.scale.set(1.0, 0.18, 0.6);
   mouthGroup.add(mouthCavity);
 
-  // Teeth: thin upper-row plate sitting just inside the lip torus. Faded in by
-  // applyExpression when teethVisible > 0.
-  const teethGeom = new THREE.BoxGeometry(0.22, 0.05, 0.04);
+  const teethW = cfg.lipTorusRadius * 1.22;
+  const teethGeom = new THREE.BoxGeometry(teethW, 0.05, 0.04);
   const teeth = new THREE.Mesh(teethGeom, materials.teeth);
   teeth.position.set(0, 0.025, 0.0);
   mouthGroup.add(teeth);
 
-  // Tongue: tucked behind the lower lip, slides forward on tongueOut.
   const tongueGeom = new THREE.SphereGeometry(0.10, 20, 20);
   const tongue = new THREE.Mesh(tongueGeom, materials.tongue);
   tongue.position.set(0, -0.03, -0.04);
   tongue.scale.set(1.0, 0.55, 1.1);
   mouthGroup.add(tongue);
 
+  // ---- Glasses (grandpa) ----------------------------------------------------
+  if (cfg.hasGlasses) {
+    buildGlasses(head, cfg, xGeoms, xMats);
+  }
+
+  // ---- Wrinkles (grandpa) ---------------------------------------------------
+  if (cfg.hasWrinkles) {
+    buildWrinkles(head, cfg, xGeoms, xMats);
+  }
+
+  // ---- Defaults snapshot ----------------------------------------------------
   const defaults = {
     mouthGroup: {
       position: mouthGroup.position.clone(),
@@ -318,50 +271,24 @@ export function createAvatar(): AvatarRig {
     lidRightLowerScale: lidRightLower.scale.clone(),
     lidLeftLowerPosition: lidLeftLower.position.clone(),
     lidRightLowerPosition: lidRightLower.position.clone(),
-    browLeft: {
-      position: browLeft.position.clone(),
-      rotation: browLeft.rotation.clone(),
-    },
-    browRight: {
-      position: browRight.position.clone(),
-      rotation: browRight.rotation.clone(),
-    },
+    browLeft: { position: browLeft.position.clone(), rotation: browLeft.rotation.clone() },
+    browRight: { position: browRight.position.clone(), rotation: browRight.rotation.clone() },
     eyeLeftScale: left.g.scale.clone(),
     eyeRightScale: right.g.scale.clone(),
-    cheekLeft: {
-      position: cheekLeft.position.clone(),
-      scale: cheekLeft.scale.clone(),
-    },
-    cheekRight: {
-      position: cheekRight.position.clone(),
-      scale: cheekRight.scale.clone(),
-    },
+    cheekLeft: { position: cheekLeft.position.clone(), scale: cheekLeft.scale.clone() },
+    cheekRight: { position: cheekRight.position.clone(), scale: cheekRight.scale.clone() },
   };
 
   const dispose = () => {
     [
-      skullGeom,
-      noseGeom,
-      earGeom,
-      capGeom,
-      tuftGeom,
-      sceleraGeom,
-      irisGeom,
-      irisRingGeom,
-      pupilGeom,
-      hiliteGeom,
-      lidUpperGeom,
-      lidLowerGeom,
-      browGeom,
-      cheekGeom,
-      lipsGeom,
-      cavityGeom,
-      teethGeom,
-      tongueGeom,
+      skullGeom, noseGeom, earGeom, sceleraGeom, irisGeom, irisRingGeom,
+      pupilGeom, hiliteGeom, lidUpperGeom, lidLowerGeom, browGeom, cheekGeom,
+      lipsGeom, cavityGeom, teethGeom, tongueGeom,
+      ...xGeoms,
     ].forEach((g) => g.dispose());
-    // The dark iris-ring uses an inline material; dispose it too.
     (left.ring.material as THREE.Material).dispose();
     (right.ring.material as THREE.Material).dispose();
+    xMats.forEach((m) => m.dispose());
     materials.dispose();
   };
 
@@ -369,29 +296,338 @@ export function createAvatar(): AvatarRig {
     root,
     head,
     parts: {
-      skull,
-      nose,
-      mouthGroup,
-      mouthCavity,
-      lipsOuter,
-      teeth,
-      tongue,
-      lidLeftUpper,
-      lidRightUpper,
-      lidLeftLower,
-      lidRightLower,
-      browLeft,
-      browRight,
-      irisLeft: left.irisRoot,
-      irisRight: right.irisRoot,
-      eyeLeft: left.g,
-      eyeRight: right.g,
-      cheekLeft,
-      cheekRight,
-      hair,
+      skull, nose, mouthGroup, mouthCavity, lipsOuter, teeth, tongue,
+      lidLeftUpper, lidRightUpper, lidLeftLower, lidRightLower,
+      browLeft, browRight,
+      irisLeft: left.irisRoot, irisRight: right.irisRoot,
+      eyeLeft: left.g, eyeRight: right.g,
+      cheekLeft, cheekRight, hair,
     },
     defaults,
     materials,
     dispose,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Hair builders
+// ---------------------------------------------------------------------------
+
+function buildHair(
+  cfg: CharacterConfig,
+  materials: AvatarMaterials,
+  xGeoms: THREE.BufferGeometry[],
+  _xMats: THREE.Material[],
+): THREE.Group {
+  const hair = new THREE.Group();
+  hair.name = 'hair';
+
+  if (cfg.hairStyle === 'child') {
+    const capGeom = new THREE.SphereGeometry(0.94, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.02, 0);
+    hair.add(cap);
+
+    const tuftGeom = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(tuftGeom);
+    const TUFTS: Array<{ pos: [number, number, number]; rot: [number, number, number]; scale: [number, number, number] }> = [
+      { pos: [-0.55, 0.62, 0.45], rot: [-0.5, 0.4, 0.4], scale: [0.32, 0.22, 0.32] },
+      { pos: [-0.25, 0.72, 0.55], rot: [-0.6, 0.1, 0.15], scale: [0.34, 0.26, 0.34] },
+      { pos: [0.05, 0.78, 0.55], rot: [-0.65, -0.05, -0.02], scale: [0.36, 0.28, 0.36] },
+      { pos: [0.32, 0.74, 0.5], rot: [-0.6, -0.2, -0.2], scale: [0.34, 0.26, 0.34] },
+      { pos: [0.6, 0.6, 0.4], rot: [-0.5, -0.45, -0.4], scale: [0.32, 0.22, 0.32] },
+      { pos: [-0.45, 0.78, 0.2], rot: [-0.2, 0.4, 0.4], scale: [0.3, 0.22, 0.3] },
+      { pos: [-0.05, 0.86, 0.25], rot: [-0.25, 0.0, 0.0], scale: [0.34, 0.24, 0.34] },
+      { pos: [0.4, 0.82, 0.2], rot: [-0.2, -0.3, -0.35], scale: [0.32, 0.22, 0.32] },
+      { pos: [-0.35, 0.5, 0.7], rot: [-0.9, 0.3, 0.3], scale: [0.22, 0.16, 0.22] },
+      { pos: [0.15, 0.5, 0.78], rot: [-0.95, -0.05, 0.05], scale: [0.24, 0.18, 0.24] },
+      { pos: [0.42, 0.48, 0.7], rot: [-0.9, -0.3, -0.3], scale: [0.22, 0.16, 0.22] },
+    ];
+    for (const t of TUFTS) {
+      const m = new THREE.Mesh(tuftGeom, materials.hair);
+      m.position.fromArray(t.pos);
+      m.rotation.fromArray(t.rot);
+      m.scale.fromArray(t.scale);
+      hair.add(m);
+    }
+
+  } else if (cfg.hairStyle === 'woman') {
+    // Larger cap that extends further down the sides of the head.
+    const capGeom = new THREE.SphereGeometry(0.965, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.02, 0);
+    hair.add(cap);
+
+    const tuftGeom = new THREE.SphereGeometry(1, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(tuftGeom);
+    const TUFTS: Array<{ pos: [number, number, number]; rot: [number, number, number]; scale: [number, number, number] }> = [
+      { pos: [-0.4, 0.76, 0.50], rot: [-0.55, 0.3, 0.3], scale: [0.35, 0.27, 0.35] },
+      { pos: [0.05, 0.84, 0.52], rot: [-0.62, 0.0, 0.0], scale: [0.38, 0.30, 0.38] },
+      { pos: [0.45, 0.76, 0.46], rot: [-0.55, -0.3, -0.3], scale: [0.35, 0.27, 0.35] },
+      { pos: [-0.10, 0.88, 0.22], rot: [-0.22, 0.0, 0.0], scale: [0.36, 0.26, 0.36] },
+      { pos: [-0.55, 0.64, 0.40], rot: [-0.48, 0.42, 0.42], scale: [0.30, 0.21, 0.30] },
+      { pos: [0.58, 0.62, 0.38], rot: [-0.48, -0.42, -0.42], scale: [0.30, 0.21, 0.30] },
+    ];
+    for (const t of TUFTS) {
+      const m = new THREE.Mesh(tuftGeom, materials.hair);
+      m.position.fromArray(t.pos);
+      m.rotation.fromArray(t.rot);
+      m.scale.fromArray(t.scale);
+      hair.add(m);
+    }
+
+    // Long side strands hanging down from each side of the head.
+    const strandGeom = new THREE.SphereGeometry(0.18, 12, 12);
+    xGeoms.push(strandGeom);
+    const STRANDS: Array<{ pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }> = [
+      { pos: [0.81, -0.08, 0.28], scale: [0.16, 0.82, 0.15], rot: [0.08, 0.0, 0.10] },
+      { pos: [0.87, -0.24, -0.06], scale: [0.14, 0.95, 0.14], rot: [0.0, 0.0, 0.14] },
+      { pos: [0.74, -0.14, 0.52], scale: [0.15, 0.72, 0.14], rot: [-0.10, 0.0, 0.06] },
+    ];
+    for (const s of STRANDS) {
+      for (const side of [-1, 1] as const) {
+        const m = new THREE.Mesh(strandGeom, materials.hair);
+        m.position.set(s.pos[0] * side, s.pos[1], s.pos[2]);
+        m.scale.fromArray(s.scale);
+        m.rotation.set(s.rot[0], s.rot[1], s.rot[2] * side);
+        hair.add(m);
+      }
+    }
+
+  } else if (cfg.hairStyle === 'man') {
+    // Shorter cap with slight recession at the front.
+    const capGeom = new THREE.SphereGeometry(0.91, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.46);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.05, 0);
+    hair.add(cap);
+
+    const tuftGeom = new THREE.SphereGeometry(1, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.50);
+    xGeoms.push(tuftGeom);
+    const TUFTS: Array<{ pos: [number, number, number]; rot: [number, number, number]; scale: [number, number, number] }> = [
+      { pos: [-0.20, 0.74, 0.48], rot: [-0.58, 0.12, 0.12], scale: [0.32, 0.24, 0.32] },
+      { pos: [0.06, 0.80, 0.50], rot: [-0.62, 0.0, 0.0], scale: [0.34, 0.26, 0.34] },
+      { pos: [0.30, 0.74, 0.44], rot: [-0.58, -0.18, -0.18], scale: [0.32, 0.24, 0.32] },
+      { pos: [-0.42, 0.66, 0.36], rot: [-0.48, 0.36, 0.36], scale: [0.26, 0.18, 0.26] },
+      { pos: [0.44, 0.64, 0.34], rot: [-0.46, -0.36, -0.36], scale: [0.26, 0.18, 0.26] },
+      { pos: [0.0, 0.84, 0.20], rot: [-0.22, 0.0, 0.0], scale: [0.30, 0.22, 0.30] },
+    ];
+    for (const t of TUFTS) {
+      const m = new THREE.Mesh(tuftGeom, materials.hair);
+      m.position.fromArray(t.pos);
+      m.rotation.fromArray(t.rot);
+      m.scale.fromArray(t.scale);
+      hair.add(m);
+    }
+
+  } else {
+    // grandpa: just side wisps — no full cap on top (shows skin through).
+    const wispGeom = new THREE.SphereGeometry(0.18, 12, 12);
+    xGeoms.push(wispGeom);
+    const WISPS: Array<{ pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }> = [
+      { pos: [0.76, 0.32, 0.10], scale: [0.22, 0.15, 0.14], rot: [0.0, 0.0, 0.30] },
+      { pos: [0.82, 0.48, -0.08], scale: [0.18, 0.13, 0.12], rot: [0.0, 0.0, 0.22] },
+      { pos: [0.78, 0.18, 0.30], scale: [0.20, 0.14, 0.14], rot: [-0.10, 0.0, 0.22] },
+      { pos: [0.68, 0.58, 0.18], scale: [0.16, 0.11, 0.11], rot: [0.0, 0.0, 0.18] },
+      // Back wisps
+      { pos: [0.38, 0.18, -0.86], scale: [0.20, 0.12, 0.10], rot: [0.4, 0.0, 0.0] },
+    ];
+    for (const w of WISPS) {
+      for (const side of [-1, 1] as const) {
+        const m = new THREE.Mesh(wispGeom, materials.hair);
+        m.position.set(w.pos[0] * side, w.pos[1], w.pos[2]);
+        m.scale.fromArray(w.scale);
+        m.rotation.set(w.rot[0], w.rot[1], w.rot[2] * side);
+        hair.add(m);
+      }
+    }
+  }
+
+  return hair;
+}
+
+// ---------------------------------------------------------------------------
+// Eyelashes (woman)
+// ---------------------------------------------------------------------------
+
+function buildLashes(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  const lashGeom = new THREE.BoxGeometry(0.014, 0.072, 0.010);
+  xGeoms.push(lashGeom);
+  const lashMat = new THREE.MeshStandardMaterial({ color: 0x0c0808, roughness: 0.7 });
+  xMats.push(lashMat);
+
+  const COUNT = 7;
+  const halfSpan = cfg.eyeOffsetX * 0.88;
+  const step = (halfSpan * 2) / (COUNT - 1);
+
+  for (const side of [-1, 1] as const) {
+    const cx = cfg.eyeOffsetX * side;
+    for (let i = 0; i < COUNT; i++) {
+      const t = i / (COUNT - 1); // 0..1
+      const lx = (-halfSpan + step * i) * side; // local x offset within eye
+      // Outer lashes angle more outward; use a gentle fan.
+      const fanAngle = (t - 0.5) * 0.7 * side;
+      const lash = new THREE.Mesh(lashGeom, lashMat);
+      lash.position.set(
+        cx + lx * 0.55,
+        cfg.eyeOffsetY + cfg.eyeRadius * 0.92,
+        cfg.eyeZ + 0.01,
+      );
+      lash.rotation.set(-0.3, 0, fanAngle);
+      head.add(lash);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Beard (uncle = stubble, grandpa = full)
+// ---------------------------------------------------------------------------
+
+function buildBeard(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  const beardMat = new THREE.MeshStandardMaterial({
+    color: cfg.beardColor,
+    roughness: 0.9,
+    metalness: 0.0,
+  });
+  xMats.push(beardMat);
+
+  if (cfg.beardStyle === 'stubble') {
+    // Flat mesh covering the lower jaw area, sitting just proud of the skin.
+    const g = new THREE.SphereGeometry(0.62, 24, 16, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.34);
+    xGeoms.push(g);
+    const mesh = new THREE.Mesh(g, beardMat);
+    mesh.position.set(0, -0.26, 0.48);
+    mesh.scale.set(cfg.headScaleX * 0.97, 0.88, 0.62);
+    head.add(mesh);
+  } else if (cfg.beardStyle === 'full') {
+    // Main beard covering lower face.
+    const g = new THREE.SphereGeometry(0.65, 24, 16, 0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.40);
+    xGeoms.push(g);
+    const mesh = new THREE.Mesh(g, beardMat);
+    mesh.position.set(0, -0.30, 0.46);
+    mesh.scale.set(cfg.headScaleX * 0.98, 0.92, 0.66);
+    head.add(mesh);
+
+    // Chin puff extending below the jaw.
+    const chinG = new THREE.SphereGeometry(0.20, 18, 14);
+    xGeoms.push(chinG);
+    const chin = new THREE.Mesh(chinG, beardMat);
+    chin.position.set(0, -0.66, 0.54);
+    chin.scale.set(0.95, 0.78, 0.68);
+    head.add(chin);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Glasses (grandpa)
+// ---------------------------------------------------------------------------
+
+function buildGlasses(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1410,
+    roughness: 0.5,
+    metalness: 0.35,
+  });
+  xMats.push(frameMat);
+
+  const FRAME_R = cfg.eyeRadius * 1.18;
+  const TUBE_R = 0.018;
+  const frameGeom = new THREE.TorusGeometry(FRAME_R, TUBE_R, 10, 32);
+  xGeoms.push(frameGeom);
+
+  const ey = cfg.eyeOffsetY;
+  const ez = cfg.eyeZ + 0.04; // slightly in front of eye plane
+
+  for (const side of [-1, 1] as const) {
+    const frame = new THREE.Mesh(frameGeom, frameMat);
+    frame.position.set(cfg.eyeOffsetX * side, ey, ez);
+    frame.rotation.x = 0.05;
+    head.add(frame);
+  }
+
+  // Bridge connecting the two frames.
+  const bridgeW = cfg.eyeOffsetX * 2 - FRAME_R * 2 - 0.02;
+  const bridgeGeom = new THREE.BoxGeometry(Math.max(0.02, bridgeW), TUBE_R * 1.8, TUBE_R * 1.8);
+  xGeoms.push(bridgeGeom);
+  const bridge = new THREE.Mesh(bridgeGeom, frameMat);
+  bridge.position.set(0, ey, ez);
+  head.add(bridge);
+
+  // Temple arms extending to the sides of the head.
+  const armGeom = new THREE.BoxGeometry(0.55, TUBE_R * 1.5, TUBE_R * 1.5);
+  xGeoms.push(armGeom);
+  for (const side of [-1, 1] as const) {
+    const arm = new THREE.Mesh(armGeom, frameMat);
+    arm.position.set(side * (cfg.eyeOffsetX + FRAME_R + 0.26), ey, ez - 0.04);
+    arm.rotation.set(0, side * 0.1, 0);
+    head.add(arm);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wrinkles / age lines (grandpa)
+// ---------------------------------------------------------------------------
+
+function buildWrinkles(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  // Dark-tinted skin material for the crease lines.
+  const wrinkleMat = new THREE.MeshStandardMaterial({
+    color: cfg.skinColor,
+    emissive: new THREE.Color(0x0a0500),
+    emissiveIntensity: 1.0,
+    roughness: 0.92,
+    metalness: 0.0,
+  });
+  xMats.push(wrinkleMat);
+
+  const ey = cfg.eyeOffsetY;
+  const ez = cfg.eyeZ;
+
+  // Crow's feet: 3 short arcs radiating from each outer eye corner.
+  const crowGeom = new THREE.TorusGeometry(0.060, 0.007, 5, 14, Math.PI * 0.55);
+  xGeoms.push(crowGeom);
+  for (const side of [-1, 1] as const) {
+    const baseX = side * (cfg.eyeOffsetX + cfg.eyeRadius * 0.8);
+    for (let i = 0; i < 3; i++) {
+      const crow = new THREE.Mesh(crowGeom, wrinkleMat);
+      crow.position.set(
+        baseX + side * i * 0.022,
+        ey - 0.02 - i * 0.038,
+        ez - 0.06 + i * 0.018,
+      );
+      crow.rotation.set(0.2, side * (-0.5 - i * 0.15), side * 0.35);
+      head.add(crow);
+    }
+  }
+
+  // Nasolabial folds: curved creases from nose to mouth corners.
+  const foldGeom = new THREE.TorusGeometry(0.21, 0.008, 5, 18, Math.PI * 0.50);
+  xGeoms.push(foldGeom);
+  for (const side of [-1, 1] as const) {
+    const fold = new THREE.Mesh(foldGeom, wrinkleMat);
+    fold.position.set(side * 0.26, -0.08, 0.76);
+    fold.rotation.set(-0.12, side * 0.52, side * 1.28);
+    head.add(fold);
+  }
 }

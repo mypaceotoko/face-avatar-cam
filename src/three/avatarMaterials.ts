@@ -1,23 +1,15 @@
 import * as THREE from 'three';
 
-// Tuned away from the iOS Memoji yellow toward a warm human-skin palette while
-// keeping the stylised character look. The avatar still uses the same rig
-// (single lipsOuter torus, fade-in cheeks, fade-in teeth, big readable iris)
-// but the colours read as a person rather than an emoji.
 export const PALETTE = {
   skin: 0xe8b89c,
-  skinShade: 0xc88f72, // used by the neck so the chin->neck transition reads
-  cheek: 0xd97a6b, // pinker blush that fades in on smile/laugh
+  cheek: 0xd97a6b,
   hair: 0x2c1a12,
-  hairHighlight: 0x4a2d1d,
   brow: 0x2c1a12,
   sclera: 0xfaf6f0,
-  // Readable mid-brown iris — still the single biggest "alive" cue at
-  // thumbnail size, but warmer than a saturated chocolate brown.
   iris: 0x5a3320,
   pupil: 0x0a0807,
   hilite: 0xffffff,
-  lip: 0xb05a55, // toned-down rose, closer to natural lip than primary red
+  lip: 0xb05a55,
   mouthCavity: 0x3a0e0e,
   tongue: 0xd86878,
   teeth: 0xf5ece0,
@@ -39,30 +31,44 @@ export type AvatarMaterials = {
   dispose: () => void;
 };
 
-export function createAvatarMaterials(): AvatarMaterials {
-  // Skin: high roughness so it reads as matte human skin, with a tiny emissive
-  // tint so cheeks/jaw never fall to pure black under our two-light rig.
+export type ColorOverrides = Partial<{
+  skin: number;
+  cheek: number;
+  hair: number;
+  brow: number;
+  iris: number;
+  lip: number;
+}>;
+
+export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMaterials {
+  const p = { ...PALETTE, ...overrides };
+
+  // Skin emissive: warm tint derived from the base skin color so darker
+  // characters don't fall to flat black under the two-light rig.
+  const skinBase = new THREE.Color(p.skin);
+  const emissiveSkin = skinBase.clone().multiplyScalar(0.14);
+
   const skin = new THREE.MeshStandardMaterial({
-    color: PALETTE.skin,
+    color: p.skin,
     roughness: 0.78,
     metalness: 0.0,
-    emissive: 0x2a1208,
-    emissiveIntensity: 0.18,
+    emissive: emissiveSkin,
+    emissiveIntensity: 1.0,
   });
   const cheek = new THREE.MeshStandardMaterial({
-    color: PALETTE.cheek,
+    color: p.cheek,
     roughness: 0.55,
     metalness: 0.0,
     transparent: true,
-    opacity: 0.0, // faded in by applyExpression on smile/laugh.
+    opacity: 0.0,
   });
   const hair = new THREE.MeshStandardMaterial({
-    color: PALETTE.hair,
-    roughness: 0.55,
+    color: p.hair,
+    roughness: 0.58,
     metalness: 0.0,
   });
   const brow = new THREE.MeshStandardMaterial({
-    color: PALETTE.brow,
+    color: p.brow,
     roughness: 0.6,
     metalness: 0.0,
   });
@@ -72,15 +78,15 @@ export function createAvatarMaterials(): AvatarMaterials {
     metalness: 0.0,
   });
   const iris = new THREE.MeshStandardMaterial({
-    color: PALETTE.iris,
+    color: p.iris,
     roughness: 0.5,
     metalness: 0.0,
   });
   const pupil = new THREE.MeshBasicMaterial({ color: PALETTE.pupil });
   const hilite = new THREE.MeshBasicMaterial({ color: PALETTE.hilite });
   const lip = new THREE.MeshStandardMaterial({
-    color: PALETTE.lip,
-    roughness: 0.45,
+    color: p.lip,
+    roughness: 0.42,
     metalness: 0.0,
   });
   const mouthCavity = new THREE.MeshStandardMaterial({
@@ -99,7 +105,7 @@ export function createAvatarMaterials(): AvatarMaterials {
     roughness: 0.3,
     metalness: 0.0,
     transparent: true,
-    opacity: 0.0, // revealed by applyExpression when the mouth opens.
+    opacity: 0.0,
   });
 
   const dispose = () => {
@@ -108,19 +114,5 @@ export function createAvatarMaterials(): AvatarMaterials {
     );
   };
 
-  return {
-    skin,
-    cheek,
-    hair,
-    brow,
-    sclera,
-    iris,
-    pupil,
-    hilite,
-    lip,
-    mouthCavity,
-    tongue,
-    teeth,
-    dispose,
-  };
+  return { skin, cheek, hair, brow, sclera, iris, pupil, hilite, lip, mouthCavity, tongue, teeth, dispose };
 }
