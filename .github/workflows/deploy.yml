@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -19,8 +17,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/setup-node@v4
         with:
@@ -32,10 +38,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -43,6 +45,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
