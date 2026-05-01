@@ -18,22 +18,30 @@ export type AvatarRig = {
     mouthGroup: THREE.Group;
     mouthCavity: THREE.Mesh;
     lipsOuter: THREE.Mesh;
+    tongue: THREE.Mesh;
     lidLeftUpper: THREE.Mesh;
     lidRightUpper: THREE.Mesh;
     browLeft: THREE.Mesh;
     browRight: THREE.Mesh;
     irisLeft: THREE.Group;
     irisRight: THREE.Group;
+    eyeLeft: THREE.Group;
+    eyeRight: THREE.Group;
     hair: THREE.Group;
   };
   defaults: {
-    mouthGroup: { position: THREE.Vector3; scale: THREE.Vector3 };
+    mouthGroup: { position: THREE.Vector3; scale: THREE.Vector3; rotation: THREE.Euler };
     mouthCavityScale: THREE.Vector3;
     lipsOuterScale: THREE.Vector3;
+    lipsOuterRotation: THREE.Euler;
+    tonguePosition: THREE.Vector3;
+    tongueScale: THREE.Vector3;
     lidLeftScale: THREE.Vector3;
     lidRightScale: THREE.Vector3;
     browLeft: { position: THREE.Vector3; rotation: THREE.Euler };
     browRight: { position: THREE.Vector3; rotation: THREE.Euler };
+    eyeLeftScale: THREE.Vector3;
+    eyeRightScale: THREE.Vector3;
   };
   materials: AvatarMaterials;
   dispose: () => void;
@@ -207,13 +215,25 @@ export function createAvatar(): AvatarRig {
   mouthCavity.scale.set(1.0, 0.18, 0.6);
   mouthGroup.add(mouthCavity);
 
+  // ---- Tongue ---------------------------------------------------------------
+  // Sits tucked just behind the lower lip; pushed forward when tongueOut fires.
+  const tongueGeom = new THREE.SphereGeometry(0.09, 20, 20);
+  const tongue = new THREE.Mesh(tongueGeom, materials.tongue);
+  tongue.position.set(0, -0.02, -0.04);
+  tongue.scale.set(1.0, 0.55, 1.1);
+  mouthGroup.add(tongue);
+
   const defaults = {
     mouthGroup: {
       position: mouthGroup.position.clone(),
       scale: mouthGroup.scale.clone(),
+      rotation: mouthGroup.rotation.clone(),
     },
     mouthCavityScale: mouthCavity.scale.clone(),
     lipsOuterScale: lipsOuter.scale.clone(),
+    lipsOuterRotation: lipsOuter.rotation.clone(),
+    tonguePosition: tongue.position.clone(),
+    tongueScale: tongue.scale.clone(),
     lidLeftScale: lidLeftUpper.scale.clone(),
     lidRightScale: lidRightUpper.scale.clone(),
     browLeft: {
@@ -224,6 +244,8 @@ export function createAvatar(): AvatarRig {
       position: browRight.position.clone(),
       rotation: browRight.rotation.clone(),
     },
+    eyeLeftScale: left.g.scale.clone(),
+    eyeRightScale: right.g.scale.clone(),
   };
 
   const dispose = () => {
@@ -241,6 +263,7 @@ export function createAvatar(): AvatarRig {
       browGeom,
       lipsGeom,
       cavityGeom,
+      tongueGeom,
     ].forEach((g) => g.dispose());
     materials.dispose();
   };
@@ -254,12 +277,15 @@ export function createAvatar(): AvatarRig {
       mouthGroup,
       mouthCavity,
       lipsOuter,
+      tongue,
       lidLeftUpper,
       lidRightUpper,
       browLeft,
       browRight,
       irisLeft: left.irisRoot,
       irisRight: right.irisRoot,
+      eyeLeft: left.g,
+      eyeRight: right.g,
       hair,
     },
     defaults,
