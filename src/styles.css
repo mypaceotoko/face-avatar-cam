@@ -281,6 +281,11 @@ body,
   border: 1px solid #333;
 }
 
+.btn--green {
+  background: #00b140;
+  color: #001a08;
+}
+
 .status {
   font-size: 12px;
   color: var(--muted);

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { createSceneCamera, updateCameraAspect } from '../three/alignCameraToVideo';
 import { createBackgroundPlane, type BackgroundPlane } from '../three/createBackgroundPlane';
+import type { MaskFrame } from './useSegmenter';
 
 export type ThreeRefs = {
   renderer: THREE.WebGLRenderer | null;
@@ -24,6 +25,8 @@ export function useThreeScene(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   videoRef: React.RefObject<HTMLVideoElement>,
   active: boolean,
+  maskRef: React.MutableRefObject<MaskFrame>,
+  greenScreenRef: React.MutableRefObject<boolean>,
 ): UseThreeSceneResult {
   const refs = useRef<ThreeRefs>({
     renderer: null,
@@ -49,15 +52,11 @@ export function useThreeScene(
       powerPreference: 'high-performance',
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // Phones with very high DPRs (3+) burn fill rate for little visible gain;
-    // cap at 2 to keep the rAF loop comfortably above 30fps.
     const isCoarse =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(pointer: coarse)').matches;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isCoarse ? 1.75 : 2));
 
-    // iOS Safari intermittently loses the WebGL context when the page is
-    // backgrounded; prevent the default so the browser tries to restore it.
     const onContextLost = (ev: Event) => {
       ev.preventDefault();
     };
@@ -103,7 +102,15 @@ export function useThreeScene(
     video.addEventListener('loadedmetadata', resize);
     resize();
 
+    let lastMaskFrameId = -1;
     const tick = () => {
+      const mf = maskRef.current;
+      if (mf.frameId !== lastMaskFrameId && mf.data) {
+        background.setMaskFrame(mf.data, mf.width, mf.height);
+        lastMaskFrameId = mf.frameId;
+      }
+      background.setGreenScreen(greenScreenRef.current);
+
       renderer.render(scene, camera);
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -126,7 +133,7 @@ export function useThreeScene(
       };
       setMirrorRoot(null);
     };
-  }, [active, canvasRef, videoRef]);
+  }, [active, canvasRef, videoRef, maskRef, greenScreenRef]);
 
   return { refs, mirrorRoot };
 }
