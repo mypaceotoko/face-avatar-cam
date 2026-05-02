@@ -554,6 +554,59 @@ function buildHair(
       }
     }
 
+  } else if (cfg.hairStyle === 'boyswept') {
+    // Volumized chocolate-brown hair swept forward in chunky parallel rolls.
+    // The look: thick rolls stacked from front to back, each roll a stretched
+    // capsule pointing forward (+Z) so it reads as combed-forward bangs that
+    // pile up over the forehead. Sides are kept short so the cheeks/ears show.
+
+    // Base cap — slightly oversized to give the hair real volume.
+    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.50);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.06, 0);
+    hair.add(cap);
+
+    // Each roll is a thick capsule. radius ~0.11, length ~0.55, oriented along
+    // its local Y axis; we rotate it so the long axis points forward and slightly
+    // upward, giving the swept-forward "wave" silhouette of the reference.
+    const rollGeom = new THREE.CapsuleGeometry(0.11, 0.42, 12, 24);
+    xGeoms.push(rollGeom);
+
+    // Format: [posX, posY, posZ, rotX, rotY, rotZ, sx, sy, sz]
+    // posX spreads them across the head; rows from forelock to crown.
+    const ROLLS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      // FORELOCK (front row — biggest, tipped forward, draping over forehead)
+      [-0.50, 0.75, 0.65,  1.05,  0.45,  0.20,  1.05, 1.10, 1.00],
+      [-0.25, 0.82, 0.72,  1.10,  0.18,  0.05,  1.10, 1.20, 1.00],
+      [ 0.00, 0.85, 0.74,  1.12,  0.00,  0.00,  1.15, 1.25, 1.00],
+      [ 0.25, 0.82, 0.72,  1.10, -0.18, -0.05,  1.10, 1.20, 1.00],
+      [ 0.50, 0.75, 0.65,  1.05, -0.45, -0.20,  1.05, 1.10, 1.00],
+
+      // SECOND ROW (sweep up and back, less tip)
+      [-0.42, 0.92, 0.40,  0.78,  0.40,  0.20,  1.00, 1.05, 1.00],
+      [-0.15, 0.98, 0.45,  0.80,  0.15,  0.05,  1.05, 1.15, 1.00],
+      [ 0.15, 0.98, 0.45,  0.80, -0.15, -0.05,  1.05, 1.15, 1.00],
+      [ 0.42, 0.92, 0.40,  0.78, -0.40, -0.20,  1.00, 1.05, 1.00],
+
+      // CROWN ROW (mostly flat over the top, slight forward tilt)
+      [-0.30, 1.00, 0.10,  0.50,  0.30,  0.15,  0.95, 1.00, 0.95],
+      [ 0.00, 1.04, 0.12,  0.50,  0.00,  0.00,  1.00, 1.10, 1.00],
+      [ 0.30, 1.00, 0.10,  0.50, -0.30, -0.15,  0.95, 1.00, 0.95],
+
+      // SIDE WISPS (short, close to the temples)
+      [-0.65, 0.55, 0.42,  0.85,  0.70,  0.55,  0.70, 0.65, 0.85],
+      [ 0.65, 0.55, 0.42,  0.85, -0.70, -0.55,  0.70, 0.65, 0.85],
+    ];
+
+    for (const r of ROLLS) {
+      const m = new THREE.Mesh(rollGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
   } else if (cfg.hairStyle === 'man') {
     // Shorter cap with slight recession at the front.
     const capGeom = new THREE.SphereGeometry(0.91, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.46);

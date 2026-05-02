@@ -1,4 +1,4 @@
-export type CharacterType = 'child' | 'woman' | 'uncle' | 'grandpa';
+export type CharacterType = 'child' | 'boy' | 'woman' | 'uncle' | 'grandpa';
 
 export interface CharacterConfig {
   labelJa: string;
@@ -49,7 +49,7 @@ export interface CharacterConfig {
   lipColor: number;
   browColor: number;
   // Hair style
-  hairStyle: 'child' | 'woman' | 'man' | 'grandpa';
+  hairStyle: 'child' | 'boyswept' | 'woman' | 'man' | 'grandpa';
   // Special decorative features
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
@@ -130,6 +130,72 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hairStyle: 'child',
     hasLashes: false,
     hasBlush: true,         // gentle blush — Memoji always has it
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+  },
+
+  // Reference: chubby-cheeked boy with volumized swept-back chocolate hair,
+  // big chocolate eyes, peachy skin, soft natural mouth.
+  boy: {
+    labelJa: '少年',
+    // Round, slightly chubby head — fuller cheeks/jaw than the child preset
+    headScaleX: 1.04,
+    headScaleY: 1.04,
+    headScaleZ: 1.00,
+    // Big Memoji eyes
+    eyeRadius: 0.235,
+    eyeOffsetX: 0.300,
+    eyeOffsetY: 0.080,
+    eyeZ: 0.770,
+    irisRadius: 0.158,
+    // Thicker natural brows arched gently — the dominant feature in the ref
+    browWidth: 0.30,
+    browHeight: 0.062,
+    browDepth: 0.075,
+    browOffsetX: 0.300,
+    browOffsetY: 0.355,
+    browOffsetZ: 0.810,
+    browRotY: 0.16,
+    browRotZInner: 0.05,
+    // Tiny rounded nose
+    noseRadius: 0.060,
+    noseOffsetY: -0.07,
+    noseZ: 0.945,
+    noseScaleX: 0.92,
+    noseScaleY: 0.95,
+    noseScaleZ: 0.78,
+    earRadius: 0.13,
+    earOffsetX: 0.91,
+    // Soft closed mouth — slightly higher and narrower than child
+    mouthOffsetY: -0.34,
+    mouthOffsetZ: 0.825,
+    lipTorusRadius: 0.122,
+    lipTubeRadius: 0.034,
+    // Round, full cheeks — pushed forward more than child for chubby look
+    cheekRadius: 0.24,
+    cheekOffsetX: 0.50,
+    cheekOffsetY: -0.13,
+    cheekOffsetZ: 0.62,
+    // Peachy ivory skin to match reference (slightly less yellow than child)
+    skinColor: 0xf5cdaf,
+    cheekColor: 0xeb9c8a,
+    // Rich chocolate hair, slightly cooler than child's brown
+    hairColor: 0x432817,
+    irisColor: 0x4a2a14,
+    lipColor: 0xc97f72,
+    browColor: 0x432817,
+    hairStyle: 'boyswept',
+    hasLashes: false,
+    hasBlush: true,
     blushColor: 0xff9985,
     hasEyeMakeup: false,
     hasLipGloss: false,
@@ -322,4 +388,4 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   },
 };
 
-export const CHARACTER_ORDER: CharacterType[] = ['child', 'woman', 'uncle', 'grandpa'];
+export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'woman', 'uncle', 'grandpa'];
