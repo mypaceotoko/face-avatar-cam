@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/face-replacement-video-app-pNRQB
+      - claude/add-face-selection-aW4RW
       - main
   workflow_dispatch:
 
