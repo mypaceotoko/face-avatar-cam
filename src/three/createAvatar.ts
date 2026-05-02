@@ -79,21 +79,53 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   head.name = 'avatarHead';
   root.add(head);
 
-  // ---- Skull ----------------------------------------------------------------
-  const skullGeom = new THREE.SphereGeometry(0.9, 128, 128);
+  // ---- Skull (Head Base) ---------------------------------------------------
+  // More sophisticated head shape: vertically stretched sphere for natural face
+  const skullGeom = new THREE.IcosahedronGeometry(0.9, 6); // Higher subdivision
   const skull = new THREE.Mesh(skullGeom, materials.skin);
-  skull.scale.set(cfg.headScaleX, cfg.headScaleY, cfg.headScaleZ);
+  skull.scale.set(cfg.headScaleX * 1.05, cfg.headScaleY * 1.12, cfg.headScaleZ * 0.98);
+
+  // Add subtle face shape definition
+  const posAttrib = skullGeom.getAttribute('position');
+  const positions = posAttrib.array as Float32Array;
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i];
+    const y = positions[i + 1];
+    const z = positions[i + 2];
+    const len = Math.sqrt(x * x + y * y + z * z);
+
+    // Make face narrower, forehead/chin rounder
+    const faceFactor = z > 0.3 ? 0.95 - Math.pow(z / 1.2, 2) * 0.15 : 1.0;
+    positions[i] *= 0.9 + faceFactor * 0.1;
+    positions[i + 2] = z * 0.98; // Slight depth
+  }
+  posAttrib.needsUpdate = true;
+  skullGeom.computeVertexNormals();
+
   head.add(skull);
 
-  // ---- Nose -----------------------------------------------------------------
-  // Use cone-like shape for more realistic tapered appearance
-  const noseGeom = new THREE.ConeGeometry(cfg.noseRadius * 0.65, cfg.noseRadius * 1.3, 32, 16);
+  // ---- Nose (Much smaller, subtle) -----------------------------------------
+  // Use very small tapered cone for delicate Memoji-style nose
+  const noseGeom = new THREE.ConeGeometry(cfg.noseRadius * 0.35, cfg.noseRadius * 0.6, 24, 12);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
-  nose.position.set(0, cfg.noseOffsetY, cfg.noseZ);
+  nose.position.set(0, cfg.noseOffsetY - 0.01, cfg.noseZ + 0.02);
   nose.rotation.x = Math.PI * 0.5; // point down
-  nose.scale.set(cfg.noseScaleX, cfg.noseScaleY, cfg.noseScaleZ);
+  nose.scale.set(cfg.noseScaleX * 0.65, cfg.noseScaleY * 0.65, cfg.noseScaleZ * 0.6);
   xGeoms.push(noseGeom);
   head.add(nose);
+
+  // ---- Nostrils (subtle detail) ----------------------------------------
+  const nostrilGeom = new THREE.SphereGeometry(cfg.noseRadius * 0.08, 16, 16);
+  const nostrilL = new THREE.Mesh(nostrilGeom, materials.mouthCavity);
+  nostrilL.position.set(-cfg.noseRadius * 0.18, cfg.noseOffsetY - 0.02, cfg.noseZ + 0.04);
+  nostrilL.scale.set(0.9, 0.8, 0.7);
+  xGeoms.push(nostrilGeom);
+  head.add(nostrilL);
+
+  const nostrilR = new THREE.Mesh(nostrilGeom, materials.mouthCavity);
+  nostrilR.position.set(cfg.noseRadius * 0.18, cfg.noseOffsetY - 0.02, cfg.noseZ + 0.04);
+  nostrilR.scale.set(0.9, 0.8, 0.7);
+  head.add(nostrilR);
 
   // ---- Ears -----------------------------------------------------------------
   const earGeom = new THREE.SphereGeometry(cfg.earRadius, 48, 48);
@@ -115,17 +147,18 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     buildBlush(head, cfg, xGeoms, xMats);
   }
 
-  // ---- Eyes -----------------------------------------------------------------
-  const sceleraR = cfg.eyeRadius;
-  const eyeOffsetX = cfg.eyeOffsetX;
-  const eyeY = cfg.eyeOffsetY;
-  const eyeZ = cfg.eyeZ;
+  // ---- Eyes (Larger, more prominent - Memoji style) ------------------------
+  const sceleraR = cfg.eyeRadius * 1.18; // Make eyes significantly larger
+  const eyeOffsetX = cfg.eyeOffsetX * 0.95; // Slightly closer together for human look
+  const eyeY = cfg.eyeOffsetY * 1.05;
+  const eyeZ = cfg.eyeZ * 0.98;
 
-  const sceleraGeom = new THREE.SphereGeometry(sceleraR, 64, 64);
-  const irisGeom = new THREE.CircleGeometry(cfg.irisRadius, 64);
-  const irisRingGeom = new THREE.RingGeometry(cfg.irisRadius * 0.91, cfg.irisRadius * 1.045, 64);
-  const pupilGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.47, 48);
-  const hiliteGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.20, 32);
+  const sceleraGeom = new THREE.IcosahedronGeometry(sceleraR, 5); // Much smoother eye
+  const irisRadiusScaled = cfg.irisRadius * 1.15; // Larger iris for better proportion
+  const irisGeom = new THREE.CircleGeometry(irisRadiusScaled, 64);
+  const irisRingGeom = new THREE.RingGeometry(irisRadiusScaled * 0.88, irisRadiusScaled * 1.08, 64);
+  const pupilGeom = new THREE.CircleGeometry(irisRadiusScaled * 0.45, 48);
+  const hiliteGeom = new THREE.CircleGeometry(irisRadiusScaled * 0.22, 32);
 
   function makeEye(side: -1 | 1) {
     const g = new THREE.Group();
@@ -201,28 +234,49 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   lidRightLower.scale.y = 0.05;
   head.add(lidRightLower);
 
-  // ---- Eye socket shadows (subtle depth) ------------------------------------
+  // ---- Eye socket shadows (deeper definition) --------------------------------
   const eyeShadowMat = new THREE.MeshStandardMaterial({
-    color: 0x000000,
-    roughness: 0.85,
+    color: 0x1a1410,
+    roughness: 0.9,
     metalness: 0.0,
     transparent: true,
-    opacity: 0.08,
+    opacity: 0.15,
     side: THREE.FrontSide,
   });
   xMats.push(eyeShadowMat);
 
-  // Subtle shadow behind upper lids for depth
-  const shadowGeom = new THREE.SphereGeometry(sceleraR * 1.15, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.3);
+  // Deep shadow above eyes for sculpted look
+  const shadowGeom = new THREE.SphereGeometry(sceleraR * 1.35, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.4);
   const shadowLeft = new THREE.Mesh(shadowGeom, eyeShadowMat);
-  shadowLeft.position.set(-eyeOffsetX, eyeY + sceleraR * 0.3, eyeZ);
-  shadowLeft.scale.set(1.0, 0.4, 1.2);
+  shadowLeft.position.set(-eyeOffsetX, eyeY + sceleraR * 0.35, eyeZ - 0.05);
+  shadowLeft.scale.set(1.15, 0.5, 1.3);
   head.add(shadowLeft);
 
   const shadowRight = new THREE.Mesh(shadowGeom, eyeShadowMat);
-  shadowRight.position.set(eyeOffsetX, eyeY + sceleraR * 0.3, eyeZ);
-  shadowRight.scale.set(1.0, 0.4, 1.2);
+  shadowRight.position.set(eyeOffsetX, eyeY + sceleraR * 0.35, eyeZ - 0.05);
+  shadowRight.scale.set(1.15, 0.5, 1.3);
   head.add(shadowRight);
+
+  // Undereye bags for more natural look
+  const undereyelGeom = new THREE.SphereGeometry(sceleraR * 0.65, 20, 20);
+  const undereyelMat = new THREE.MeshStandardMaterial({
+    color: 0x3a2a20,
+    roughness: 0.8,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.12,
+  });
+  xMats.push(undereyelMat);
+
+  const undereyeleft = new THREE.Mesh(undereyelGeom, undereyelMat);
+  undereyeleft.position.set(-eyeOffsetX, eyeY - sceleraR * 0.5, eyeZ + 0.05);
+  undereyeleft.scale.set(1.2, 0.4, 1.1);
+  head.add(undereyeleft);
+
+  const undereyelright = new THREE.Mesh(undereyelGeom, undereyelMat);
+  undereyelright.position.set(eyeOffsetX, eyeY - sceleraR * 0.5, eyeZ + 0.05);
+  undereyelright.scale.set(1.2, 0.4, 1.1);
+  head.add(undereyelright);
 
   // ---- Eyelashes (woman only) -----------------------------------------------
   if (cfg.hasLashes) {
@@ -248,15 +302,15 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   browRight.rotation.set(0, cfg.browRotY, -cfg.browRotZInner);
   head.add(browRight);
 
-  // ---- Cheeks ---------------------------------------------------------------
-  const cheekGeom = new THREE.SphereGeometry(cfg.cheekRadius, 48, 48);
+  // ---- Cheeks (more prominent, rosy) ------------------------------------------
+  const cheekGeom = new THREE.SphereGeometry(cfg.cheekRadius * 1.15, 48, 48);
   const cheekLeft = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekLeft.position.set(-cfg.cheekOffsetX, cfg.cheekOffsetY, cfg.cheekOffsetZ);
-  cheekLeft.scale.set(0.7, 0.6, 0.5);
+  cheekLeft.position.set(-cfg.cheekOffsetX * 1.05, cfg.cheekOffsetY + 0.05, cfg.cheekOffsetZ * 1.1);
+  cheekLeft.scale.set(0.85, 0.7, 0.6);
   head.add(cheekLeft);
   const cheekRight = new THREE.Mesh(cheekGeom, materials.cheek);
-  cheekRight.position.set(cfg.cheekOffsetX, cfg.cheekOffsetY, cfg.cheekOffsetZ);
-  cheekRight.scale.set(0.7, 0.6, 0.5);
+  cheekRight.position.set(cfg.cheekOffsetX * 1.05, cfg.cheekOffsetY + 0.05, cfg.cheekOffsetZ * 1.1);
+  cheekRight.scale.set(0.85, 0.7, 0.6);
   head.add(cheekRight);
 
   // ---- Beard (uncle / grandpa) ----------------------------------------------
