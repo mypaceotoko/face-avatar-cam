@@ -1,4 +1,4 @@
-export type CharacterType = 'child' | 'boy' | 'woman' | 'uncle' | 'grandpa';
+export type CharacterType = 'child' | 'boy' | 'girl' | 'woman' | 'uncle' | 'grandpa';
 
 export interface CharacterConfig {
   labelJa: string;
@@ -49,7 +49,7 @@ export interface CharacterConfig {
   lipColor: number;
   browColor: number;
   // Hair style
-  hairStyle: 'child' | 'boyswept' | 'woman' | 'man' | 'grandpa';
+  hairStyle: 'child' | 'boyswept' | 'girllong' | 'woman' | 'man' | 'grandpa';
   // Special decorative features
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
@@ -194,6 +194,72 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     lipColor: 0xc97f72,
     browColor: 0x432817,
     hairStyle: 'boyswept',
+    hasLashes: false,
+    hasBlush: true,
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+  },
+
+  // Reference: identical twin girl with long flowing dark chocolate hair,
+  // similar face proportions to boy, big yellow Memoji eyes, neutral calm expression
+  girl: {
+    labelJa: '少女',
+    // Round head, very similar to boy (twin-like proportions)
+    headScaleX: 1.03,
+    headScaleY: 1.04,
+    headScaleZ: 1.00,
+    // Big Memoji eyes, bright and expressive
+    eyeRadius: 0.237,
+    eyeOffsetX: 0.302,
+    eyeOffsetY: 0.082,
+    eyeZ: 0.770,
+    irisRadius: 0.160,
+    // Soft arched brows, slightly more delicate than boy
+    browWidth: 0.29,
+    browHeight: 0.058,
+    browDepth: 0.072,
+    browOffsetX: 0.302,
+    browOffsetY: 0.358,
+    browOffsetZ: 0.810,
+    browRotY: 0.16,
+    browRotZInner: 0.06,
+    // Tiny rounded nose, same as boy
+    noseRadius: 0.060,
+    noseOffsetY: -0.07,
+    noseZ: 0.945,
+    noseScaleX: 0.92,
+    noseScaleY: 0.95,
+    noseScaleZ: 0.78,
+    earRadius: 0.13,
+    earOffsetX: 0.91,
+    // Soft mouth, neutral expression
+    mouthOffsetY: -0.335,
+    mouthOffsetZ: 0.825,
+    lipTorusRadius: 0.120,
+    lipTubeRadius: 0.032,
+    // Slightly softer cheeks than boy
+    cheekRadius: 0.23,
+    cheekOffsetX: 0.49,
+    cheekOffsetY: -0.12,
+    cheekOffsetZ: 0.63,
+    // Same peachy yellow skin as boy
+    skinColor: 0xf5cdaf,
+    cheekColor: 0xeb9c8a,
+    // Same rich chocolate hair as boy
+    hairColor: 0x432817,
+    irisColor: 0x4a2a14,
+    lipColor: 0xc97f72,
+    browColor: 0x432817,
+    hairStyle: 'girllong',
     hasLashes: false,
     hasBlush: true,
     blushColor: 0xff9985,
@@ -388,4 +454,4 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   },
 };
 
-export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'woman', 'uncle', 'grandpa'];
+export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'girl', 'woman', 'uncle', 'grandpa'];

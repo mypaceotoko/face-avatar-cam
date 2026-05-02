@@ -607,6 +607,38 @@ function buildHair(
       hair.add(m);
     }
 
+  } else if (cfg.hairStyle === 'girllong') {
+    // Long flowing dark hair styled straight down both sides.
+    // Similar to woman but simpler, without bangs — clean, youthful, and elegant.
+    // The look: smooth cap + two long side curtains + back panel = full long-hair silhouette.
+
+    // Smooth cap on top (no tufts, no bangs — clean center part line)
+    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.40);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.04, 0);
+    hair.add(cap);
+
+    // Side curtains (long, flowing strands down both sides)
+    // Scaled as tall thin ellipsoids to create the "straight long hair" effect
+    const curtainGeom = new THREE.SphereGeometry(0.18, 32, 24);
+    xGeoms.push(curtainGeom);
+    for (const side of [-1, 1] as const) {
+      const c = new THREE.Mesh(curtainGeom, materials.hair);
+      c.position.set(side * 0.68, -0.75, 0.08);
+      c.scale.set(1.60, 5.20, 0.50);  // Tall, thin, elegant curtains
+      c.rotation.set(0, side * 0.05, side * -0.03);
+      hair.add(c);
+    }
+
+    // Back panel (wide sheet behind head for volume)
+    const backGeom = new THREE.SphereGeometry(0.20, 18, 14);
+    xGeoms.push(backGeom);
+    const back = new THREE.Mesh(backGeom, materials.hair);
+    back.position.set(0, -0.82, -0.44);
+    back.scale.set(2.20, 5.40, 0.45);  // Full-coverage back
+    hair.add(back);
+
   } else if (cfg.hairStyle === 'man') {
     // Shorter cap with slight recession at the front.
     const capGeom = new THREE.SphereGeometry(0.91, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.46);
