@@ -1,4 +1,4 @@
-export type CharacterType = 'child' | 'boy' | 'woman' | 'uncle' | 'grandpa';
+export type CharacterType = 'child' | 'boy' | 'girl' | 'woman' | 'uncle' | 'grandpa';
 
 export interface CharacterConfig {
   labelJa: string;
@@ -49,7 +49,7 @@ export interface CharacterConfig {
   lipColor: number;
   browColor: number;
   // Hair style
-  hairStyle: 'child' | 'boyswept' | 'woman' | 'man' | 'grandpa';
+  hairStyle: 'child' | 'boyswept' | 'girllong' | 'woman' | 'man' | 'grandpa';
   // Special decorative features
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
@@ -194,6 +194,72 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     lipColor: 0xc97f72,
     browColor: 0x432817,
     hairStyle: 'boyswept',
+    hasLashes: false,
+    hasBlush: true,
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+  },
+
+  // Reference: friendly girl with warm bright yellow skin, large brown Memoji eyes,
+  // long dark brown wavy hair flowing to one side, soft gentle expression
+  girl: {
+    labelJa: '少女',
+    // Round head with gentle proportions
+    headScaleX: 1.02,
+    headScaleY: 1.05,
+    headScaleZ: 0.99,
+    // Large expressive Memoji eyes with warm brown irises
+    eyeRadius: 0.240,
+    eyeOffsetX: 0.305,
+    eyeOffsetY: 0.085,
+    eyeZ: 0.770,
+    irisRadius: 0.162,
+    // Soft, natural-looking brows — straight-ish and gentle
+    browWidth: 0.28,
+    browHeight: 0.056,
+    browDepth: 0.070,
+    browOffsetX: 0.305,
+    browOffsetY: 0.360,
+    browOffsetZ: 0.810,
+    browRotY: 0.15,
+    browRotZInner: 0.05,
+    // Small, round nose (not assertive)
+    noseRadius: 0.058,
+    noseOffsetY: -0.065,
+    noseZ: 0.943,
+    noseScaleX: 0.90,
+    noseScaleY: 0.93,
+    noseScaleZ: 0.76,
+    earRadius: 0.12,
+    earOffsetX: 0.90,
+    // Soft, subtle mouth with gentle smile
+    mouthOffsetY: -0.330,
+    mouthOffsetZ: 0.828,
+    lipTorusRadius: 0.118,
+    lipTubeRadius: 0.030,
+    // Soft, approachable cheeks
+    cheekRadius: 0.22,
+    cheekOffsetX: 0.48,
+    cheekOffsetY: -0.11,
+    cheekOffsetZ: 0.64,
+    // Bright warm yellow skin (Memoji emoji-style)
+    skinColor: 0xf4d896,
+    cheekColor: 0xff9985,
+    // Dark chocolate brown hair
+    hairColor: 0x3d2817,
+    irisColor: 0x4a2a14,
+    lipColor: 0xc77065,
+    browColor: 0x3d2817,
+    hairStyle: 'girllong',
     hasLashes: false,
     hasBlush: true,
     blushColor: 0xff9985,
@@ -388,4 +454,4 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   },
 };
 
-export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'woman', 'uncle', 'grandpa'];
+export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'girl', 'woman', 'uncle', 'grandpa'];

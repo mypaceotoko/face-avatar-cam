@@ -607,6 +607,51 @@ function buildHair(
       hair.add(m);
     }
 
+  } else if (cfg.hairStyle === 'girllong') {
+    // Long dark hair with gentle waves, flowing to one side.
+    // Friendly, approachable look: smooth cap + two long wavy side curtains + back volume.
+    // The right side (character's right/viewer's left) is more voluminous for the wave effect.
+
+    // Smooth cap on top (clean, no tufts, no bangs)
+    const capGeom = new THREE.SphereGeometry(0.96, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.42);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.03, -0.02);
+    hair.add(cap);
+
+    // Left side curtain (calmer, less voluminous)
+    const curtainGeom = new THREE.SphereGeometry(0.17, 32, 24);
+    xGeoms.push(curtainGeom);
+    const cLeft = new THREE.Mesh(curtainGeom, materials.hair);
+    cLeft.position.set(-0.67, -0.73, 0.10);
+    cLeft.scale.set(1.50, 5.10, 0.48);
+    cLeft.rotation.set(0, -0.04, 0.02);
+    hair.add(cLeft);
+
+    // Right side curtain (more voluminous, creating the wave/flow to one side)
+    const cRight = new THREE.Mesh(curtainGeom, materials.hair);
+    cRight.position.set(0.71, -0.78, 0.06);
+    cRight.scale.set(1.75, 5.35, 0.54);  // Wider and taller for wave effect
+    cRight.rotation.set(0, 0.08, -0.04);
+    hair.add(cRight);
+
+    // Back panel (full volume for long hair silhouette)
+    const backGeom = new THREE.SphereGeometry(0.21, 20, 16);
+    xGeoms.push(backGeom);
+    const back = new THREE.Mesh(backGeom, materials.hair);
+    back.position.set(0.05, -0.80, -0.48);  // Slightly offset to right for wave asymmetry
+    back.scale.set(2.25, 5.45, 0.48);
+    hair.add(back);
+
+    // Extra wave detail on right side (asymmetrical wave for dimensional look)
+    const waveGeom = new THREE.SphereGeometry(0.14, 16, 12);
+    xGeoms.push(waveGeom);
+    const wave = new THREE.Mesh(waveGeom, materials.hair);
+    wave.position.set(0.82, -0.48, 0.32);
+    wave.scale.set(1.20, 2.80, 0.40);
+    wave.rotation.set(-0.12, 0.15, -0.08);
+    hair.add(wave);
+
   } else if (cfg.hairStyle === 'man') {
     // Shorter cap with slight recession at the front.
     const capGeom = new THREE.SphereGeometry(0.91, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.46);
