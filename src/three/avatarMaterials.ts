@@ -50,7 +50,7 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
 
   const skin = new THREE.MeshStandardMaterial({
     color: p.skin,
-    roughness: 0.78,
+    roughness: 0.72,
     metalness: 0.0,
     emissive: emissiveSkin,
     emissiveIntensity: 1.0,
@@ -64,8 +64,8 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
   });
   const hair = new THREE.MeshStandardMaterial({
     color: p.hair,
-    roughness: 0.58,
-    metalness: 0.0,
+    roughness: 0.52,
+    metalness: 0.02,
   });
   const brow = new THREE.MeshStandardMaterial({
     color: p.brow,
@@ -74,20 +74,20 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
   });
   const sclera = new THREE.MeshStandardMaterial({
     color: PALETTE.sclera,
-    roughness: 0.25,
+    roughness: 0.18,
     metalness: 0.0,
   });
   const iris = new THREE.MeshStandardMaterial({
     color: p.iris,
-    roughness: 0.5,
-    metalness: 0.0,
+    roughness: 0.42,
+    metalness: 0.04,
   });
   const pupil = new THREE.MeshBasicMaterial({ color: PALETTE.pupil });
   const hilite = new THREE.MeshBasicMaterial({ color: PALETTE.hilite });
   const lip = new THREE.MeshStandardMaterial({
     color: p.lip,
-    roughness: 0.42,
-    metalness: 0.0,
+    roughness: 0.38,
+    metalness: 0.02,
   });
   const mouthCavity = new THREE.MeshStandardMaterial({
     color: PALETTE.mouthCavity,
@@ -97,8 +97,8 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
   });
   const tongue = new THREE.MeshStandardMaterial({
     color: PALETTE.tongue,
-    roughness: 0.5,
-    metalness: 0.0,
+    roughness: 0.45,
+    metalness: 0.01,
   });
   const teeth = new THREE.MeshStandardMaterial({
     color: PALETTE.teeth,

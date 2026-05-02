@@ -80,20 +80,20 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   root.add(head);
 
   // ---- Skull ----------------------------------------------------------------
-  const skullGeom = new THREE.SphereGeometry(0.9, 64, 64);
+  const skullGeom = new THREE.SphereGeometry(0.9, 128, 128);
   const skull = new THREE.Mesh(skullGeom, materials.skin);
   skull.scale.set(cfg.headScaleX, cfg.headScaleY, cfg.headScaleZ);
   head.add(skull);
 
   // ---- Nose -----------------------------------------------------------------
-  const noseGeom = new THREE.SphereGeometry(cfg.noseRadius, 24, 24);
+  const noseGeom = new THREE.SphereGeometry(cfg.noseRadius, 48, 48);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
   nose.position.set(0, cfg.noseOffsetY, cfg.noseZ);
   nose.scale.set(cfg.noseScaleX, cfg.noseScaleY, cfg.noseScaleZ);
   head.add(nose);
 
   // ---- Ears -----------------------------------------------------------------
-  const earGeom = new THREE.SphereGeometry(cfg.earRadius, 20, 20);
+  const earGeom = new THREE.SphereGeometry(cfg.earRadius, 48, 48);
   const earLeft = new THREE.Mesh(earGeom, materials.skin);
   earLeft.position.set(-cfg.earOffsetX, 0.0, 0.0);
   earLeft.scale.set(0.55, 1.0, 0.45);
@@ -118,11 +118,11 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   const eyeY = cfg.eyeOffsetY;
   const eyeZ = cfg.eyeZ;
 
-  const sceleraGeom = new THREE.SphereGeometry(sceleraR, 32, 32);
-  const irisGeom = new THREE.CircleGeometry(cfg.irisRadius, 32);
-  const irisRingGeom = new THREE.RingGeometry(cfg.irisRadius * 0.91, cfg.irisRadius * 1.045, 32);
-  const pupilGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.47, 24);
-  const hiliteGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.20, 16);
+  const sceleraGeom = new THREE.SphereGeometry(sceleraR, 64, 64);
+  const irisGeom = new THREE.CircleGeometry(cfg.irisRadius, 64);
+  const irisRingGeom = new THREE.RingGeometry(cfg.irisRadius * 0.91, cfg.irisRadius * 1.045, 64);
+  const pupilGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.47, 48);
+  const hiliteGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.20, 32);
 
   function makeEye(side: -1 | 1) {
     const g = new THREE.Group();
@@ -162,7 +162,7 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   head.add(right.g);
 
   // ---- Eyelids --------------------------------------------------------------
-  const lidUpperGeom = new THREE.SphereGeometry(sceleraR + 0.005, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+  const lidUpperGeom = new THREE.SphereGeometry(sceleraR + 0.005, 48, 48, 0, Math.PI * 2, 0, Math.PI / 2);
   const lidLeftUpper = new THREE.Mesh(lidUpperGeom, materials.skin);
   lidLeftUpper.position.set(-eyeOffsetX, eyeY, eyeZ);
   lidLeftUpper.scale.y = 0.05;
@@ -172,7 +172,7 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   lidRightUpper.scale.y = 0.05;
   head.add(lidRightUpper);
 
-  const lidLowerGeom = new THREE.SphereGeometry(sceleraR + 0.005, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+  const lidLowerGeom = new THREE.SphereGeometry(sceleraR + 0.005, 48, 48, 0, Math.PI * 2, 0, Math.PI / 2);
   const lidLeftLower = new THREE.Mesh(lidLowerGeom, materials.skin);
   lidLeftLower.position.set(-eyeOffsetX, eyeY - sceleraR * 0.35, eyeZ);
   lidLeftLower.rotation.x = Math.PI;
@@ -209,7 +209,7 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   head.add(browRight);
 
   // ---- Cheeks ---------------------------------------------------------------
-  const cheekGeom = new THREE.SphereGeometry(cfg.cheekRadius, 20, 20);
+  const cheekGeom = new THREE.SphereGeometry(cfg.cheekRadius, 48, 48);
   const cheekLeft = new THREE.Mesh(cheekGeom, materials.cheek);
   cheekLeft.position.set(-cfg.cheekOffsetX, cfg.cheekOffsetY, cfg.cheekOffsetZ);
   cheekLeft.scale.set(0.7, 0.6, 0.5);
@@ -229,14 +229,14 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   mouthGroup.position.set(0, cfg.mouthOffsetY, cfg.mouthOffsetZ);
   head.add(mouthGroup);
 
-  const lipsGeom = new THREE.TorusGeometry(cfg.lipTorusRadius, cfg.lipTubeRadius, 16, 48);
+  const lipsGeom = new THREE.TorusGeometry(cfg.lipTorusRadius, cfg.lipTubeRadius, 32, 80);
   const lipsOuter = new THREE.Mesh(lipsGeom, materials.lip);
   lipsOuter.scale.set(1.0, 0.55, 0.6);
   lipsOuter.rotation.x = -0.1;
   mouthGroup.add(lipsOuter);
 
   const cavityR = cfg.lipTorusRadius * 0.89;
-  const cavityGeom = new THREE.SphereGeometry(cavityR, 24, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+  const cavityGeom = new THREE.SphereGeometry(cavityR, 48, 48, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
   const mouthCavity = new THREE.Mesh(cavityGeom, materials.mouthCavity);
   mouthCavity.position.set(0, 0, -0.02);
   mouthCavity.scale.set(1.0, 0.18, 0.6);
@@ -248,7 +248,7 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   teeth.position.set(0, 0.025, 0.0);
   mouthGroup.add(teeth);
 
-  const tongueGeom = new THREE.SphereGeometry(0.10, 20, 20);
+  const tongueGeom = new THREE.SphereGeometry(0.10, 40, 40);
   const tongue = new THREE.Mesh(tongueGeom, materials.tongue);
   tongue.position.set(0, -0.03, -0.04);
   tongue.scale.set(1.0, 0.55, 1.1);
