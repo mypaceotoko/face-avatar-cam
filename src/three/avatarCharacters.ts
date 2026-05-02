@@ -209,56 +209,56 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasWrinkles: false,
   },
 
-  // Reference: identical twin girl with long flowing dark chocolate hair,
-  // similar face proportions to boy, big yellow Memoji eyes, neutral calm expression
+  // Reference: friendly girl with warm bright yellow skin, large brown Memoji eyes,
+  // long dark brown wavy hair flowing to one side, soft gentle expression
   girl: {
     labelJa: '少女',
-    // Round head, very similar to boy (twin-like proportions)
-    headScaleX: 1.03,
-    headScaleY: 1.04,
-    headScaleZ: 1.00,
-    // Big Memoji eyes, bright and expressive
-    eyeRadius: 0.237,
-    eyeOffsetX: 0.302,
-    eyeOffsetY: 0.082,
+    // Round head with gentle proportions
+    headScaleX: 1.02,
+    headScaleY: 1.05,
+    headScaleZ: 0.99,
+    // Large expressive Memoji eyes with warm brown irises
+    eyeRadius: 0.240,
+    eyeOffsetX: 0.305,
+    eyeOffsetY: 0.085,
     eyeZ: 0.770,
-    irisRadius: 0.160,
-    // Soft arched brows, slightly more delicate than boy
-    browWidth: 0.29,
-    browHeight: 0.058,
-    browDepth: 0.072,
-    browOffsetX: 0.302,
-    browOffsetY: 0.358,
+    irisRadius: 0.162,
+    // Soft, natural-looking brows — straight-ish and gentle
+    browWidth: 0.28,
+    browHeight: 0.056,
+    browDepth: 0.070,
+    browOffsetX: 0.305,
+    browOffsetY: 0.360,
     browOffsetZ: 0.810,
-    browRotY: 0.16,
-    browRotZInner: 0.06,
-    // Tiny rounded nose, same as boy
-    noseRadius: 0.060,
-    noseOffsetY: -0.07,
-    noseZ: 0.945,
-    noseScaleX: 0.92,
-    noseScaleY: 0.95,
-    noseScaleZ: 0.78,
-    earRadius: 0.13,
-    earOffsetX: 0.91,
-    // Soft mouth, neutral expression
-    mouthOffsetY: -0.335,
-    mouthOffsetZ: 0.825,
-    lipTorusRadius: 0.120,
-    lipTubeRadius: 0.032,
-    // Slightly softer cheeks than boy
-    cheekRadius: 0.23,
-    cheekOffsetX: 0.49,
-    cheekOffsetY: -0.12,
-    cheekOffsetZ: 0.63,
-    // Same peachy yellow skin as boy
-    skinColor: 0xf5cdaf,
-    cheekColor: 0xeb9c8a,
-    // Same rich chocolate hair as boy
-    hairColor: 0x432817,
+    browRotY: 0.15,
+    browRotZInner: 0.05,
+    // Small, round nose (not assertive)
+    noseRadius: 0.058,
+    noseOffsetY: -0.065,
+    noseZ: 0.943,
+    noseScaleX: 0.90,
+    noseScaleY: 0.93,
+    noseScaleZ: 0.76,
+    earRadius: 0.12,
+    earOffsetX: 0.90,
+    // Soft, subtle mouth with gentle smile
+    mouthOffsetY: -0.330,
+    mouthOffsetZ: 0.828,
+    lipTorusRadius: 0.118,
+    lipTubeRadius: 0.030,
+    // Soft, approachable cheeks
+    cheekRadius: 0.22,
+    cheekOffsetX: 0.48,
+    cheekOffsetY: -0.11,
+    cheekOffsetZ: 0.64,
+    // Bright warm yellow skin (Memoji emoji-style)
+    skinColor: 0xf4d896,
+    cheekColor: 0xff9985,
+    // Dark chocolate brown hair
+    hairColor: 0x3d2817,
     irisColor: 0x4a2a14,
-    lipColor: 0xc97f72,
-    browColor: 0x432817,
+    lipColor: 0xc77065,
+    browColor: 0x3d2817,
     hairStyle: 'girllong',
     hasLashes: false,
     hasBlush: true,
