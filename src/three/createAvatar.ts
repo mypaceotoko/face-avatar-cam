@@ -189,6 +189,14 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     buildLashes(head, cfg, xGeoms, xMats);
   }
 
+  // ---- Eye makeup & accents (woman) ----------------------------------------
+  if (cfg.hasEyeMakeup) {
+    buildEyeMakeup(head, cfg, xGeoms, xMats);
+  }
+  if (cfg.hasEyeAccents) {
+    buildEyeAccents(left.irisRoot, right.irisRoot, cfg, xGeoms, xMats);
+  }
+
   // ---- Eyebrows -------------------------------------------------------------
   const browGeom = new THREE.BoxGeometry(cfg.browWidth, cfg.browHeight, cfg.browDepth);
   const browLeft = new THREE.Mesh(browGeom, materials.brow);
@@ -245,6 +253,11 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   tongue.position.set(0, -0.03, -0.04);
   tongue.scale.set(1.0, 0.55, 1.1);
   mouthGroup.add(tongue);
+
+  // ---- Lip gloss (woman) ---------------------------------------------------
+  if (cfg.hasLipGloss) {
+    buildLipGloss(mouthGroup, cfg, xGeoms, xMats);
+  }
 
   // ---- Glasses (grandpa) ----------------------------------------------------
   if (cfg.hasGlasses) {
@@ -322,7 +335,7 @@ function buildHair(
   cfg: CharacterConfig,
   materials: AvatarMaterials,
   xGeoms: THREE.BufferGeometry[],
-  _xMats: THREE.Material[],
+  xMats: THREE.Material[],
 ): THREE.Group {
   const hair = new THREE.Group();
   hair.name = 'hair';
@@ -402,6 +415,51 @@ function buildHair(
       hair.add(f);
     }
 
+    // --- side-swept bangs ---
+    if (cfg.hasHairBangs) {
+      const bangMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor, roughness: 0.52, metalness: 0.0 });
+      xMats.push(bangMat);
+
+      // Main bang strip sweeping diagonally across the forehead
+      const bangGeom = new THREE.SphereGeometry(0.15, 16, 10);
+      xGeoms.push(bangGeom);
+      const bang = new THREE.Mesh(bangGeom, bangMat);
+      bang.position.set(-0.05, 0.52, 0.68);
+      bang.scale.set(2.70, 0.52, 0.25);
+      bang.rotation.set(-0.20, 0.04, -0.08);
+      hair.add(bang);
+
+      // Wispy piece at the left temple for natural asymmetry
+      const bangWispGeom = new THREE.SphereGeometry(0.10, 12, 8);
+      xGeoms.push(bangWispGeom);
+      const wisp = new THREE.Mesh(bangWispGeom, bangMat);
+      wisp.position.set(-0.42, 0.44, 0.62);
+      wisp.scale.set(1.10, 0.48, 0.28);
+      wisp.rotation.set(-0.24, 0.10, 0.16);
+      hair.add(wisp);
+    }
+
+    // --- hair highlights (subtle lighter strands on side curtains) ---
+    if (cfg.hasHairHighlights) {
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0x9a7050), 0.40);
+      const hlMat = new THREE.MeshStandardMaterial({ color: hlColor, roughness: 0.44, metalness: 0.0 });
+      xMats.push(hlMat);
+
+      const hlGeom = new THREE.SphereGeometry(0.055, 10, 8);
+      xGeoms.push(hlGeom);
+
+      for (const side of [-1, 1] as const) {
+        // Two narrow highlight strands per side curtain
+        for (const dx of [0.14, -0.10] as const) {
+          const hl = new THREE.Mesh(hlGeom, hlMat);
+          hl.position.set(side * (0.68 + dx), -0.68, 0.08);
+          hl.scale.set(0.45, 5.00, 0.48);
+          hl.rotation.set(0, side * 0.06, side * -0.04);
+          hair.add(hl);
+        }
+      }
+    }
+
   } else if (cfg.hairStyle === 'man') {
     // Shorter cap with slight recession at the front.
     const capGeom = new THREE.SphereGeometry(0.91, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.46);
@@ -464,29 +522,68 @@ function buildLashes(
   xGeoms: THREE.BufferGeometry[],
   xMats: THREE.Material[],
 ) {
-  const lashGeom = new THREE.BoxGeometry(0.014, 0.072, 0.010);
-  xGeoms.push(lashGeom);
-  const lashMat = new THREE.MeshStandardMaterial({ color: 0x0c0808, roughness: 0.7 });
+  // Tapered cone-like lashes: thin tip, wider base. Reused across all lashes
+  // and scaled per-instance for length variation.
+  const upperGeom = new THREE.CylinderGeometry(0.0012, 0.006, 1.0, 6);
+  xGeoms.push(upperGeom);
+  // Lower lashes: shorter and stubbier
+  const lowerGeom = new THREE.CylinderGeometry(0.001, 0.004, 1.0, 6);
+  xGeoms.push(lowerGeom);
+
+  const lashMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0606,
+    roughness: 0.5,
+    metalness: 0.0,
+  });
   xMats.push(lashMat);
 
-  const COUNT = 7;
-  const halfSpan = cfg.eyeOffsetX * 0.88;
-  const step = (halfSpan * 2) / (COUNT - 1);
-
+  // ---- Upper lashes: 11 per eye, fanned with curve ----
+  const UPPER_COUNT = 11;
   for (const side of [-1, 1] as const) {
-    const cx = cfg.eyeOffsetX * side;
-    for (let i = 0; i < COUNT; i++) {
-      const t = i / (COUNT - 1); // 0..1
-      const lx = (-halfSpan + step * i) * side; // local x offset within eye
-      // Outer lashes angle more outward; use a gentle fan.
-      const fanAngle = (t - 0.5) * 0.7 * side;
-      const lash = new THREE.Mesh(lashGeom, lashMat);
+    for (let i = 0; i < UPPER_COUNT; i++) {
+      const t = i / (UPPER_COUNT - 1); // 0..1 across the lash line
+      // outerness: 0 at inner corner of eye, 1 at outer corner
+      const outerness = side === -1 ? t : 1 - t;
+      // Length: outer corner lashes are dramatically longer (key Memoji cue)
+      const len = 0.055 + outerness * 0.060;
+      // Horizontal position across the eye (sin curve so they cluster nicely)
+      const xRel = (t - 0.5) * cfg.eyeOffsetX * 1.18;
+      const lash = new THREE.Mesh(upperGeom, lashMat);
       lash.position.set(
-        cx + lx * 0.55,
+        side * cfg.eyeOffsetX + xRel,
         cfg.eyeOffsetY + cfg.eyeRadius * 0.92,
-        cfg.eyeZ + 0.01,
+        cfg.eyeZ + cfg.eyeRadius * 0.16,
       );
-      lash.rotation.set(-0.3, 0, fanAngle);
+      lash.scale.set(1.0, len, 1.0);
+      // Rotation: tilted back, fanned outward, outer lashes angle more
+      const tiltX = -0.42 - outerness * 0.20;
+      const fanZ = -side * (t - 0.5) * 1.45;
+      const yawY = side * outerness * 0.18;
+      lash.rotation.set(tiltX, yawY, fanZ);
+      head.add(lash);
+    }
+  }
+
+  // ---- Lower lashes: 4 per eye, very subtle ----
+  const LOWER_COUNT = 4;
+  for (const side of [-1, 1] as const) {
+    for (let i = 0; i < LOWER_COUNT; i++) {
+      const t = (i + 0.5) / LOWER_COUNT; // 0.125..0.875
+      const outerness = side === -1 ? t : 1 - t;
+      const xRel = (t - 0.5) * cfg.eyeOffsetX * 0.95;
+      const lash = new THREE.Mesh(lowerGeom, lashMat);
+      lash.position.set(
+        side * cfg.eyeOffsetX + xRel,
+        cfg.eyeOffsetY - cfg.eyeRadius * 0.85,
+        cfg.eyeZ + cfg.eyeRadius * 0.18,
+      );
+      // Lower lashes are short
+      const len = 0.020 + outerness * 0.014;
+      lash.scale.set(0.85, len, 0.85);
+      // Pointing down-and-out
+      const tiltX = 0.45 + outerness * 0.15;
+      const fanZ = side * (t - 0.5) * 0.9;
+      lash.rotation.set(tiltX, 0, fanZ);
       head.add(lash);
     }
   }
@@ -502,29 +599,259 @@ function buildBlush(
   xGeoms: THREE.BufferGeometry[],
   xMats: THREE.Material[],
 ) {
-  const blushMat = new THREE.MeshStandardMaterial({
+  // Two-layer blush: an inner saturated dot inside a soft outer halo for
+  // that natural Memoji "glowing cheeks" gradient.
+  const blushColor = new THREE.Color(cfg.blushColor);
+
+  // Inner saturated layer
+  const innerMat = new THREE.MeshStandardMaterial({
     color: cfg.blushColor,
     transparent: true,
-    opacity: 0.30,
-    roughness: 0.7,
+    opacity: 0.42,
+    roughness: 0.65,
+    emissive: blushColor.clone().multiplyScalar(0.18),
+    emissiveIntensity: 1.0,
     metalness: 0.0,
   });
-  xMats.push(blushMat);
+  xMats.push(innerMat);
 
-  // Two very flat ellipsoid discs sitting on the face surface of the skull.
-  const blushGeom = new THREE.SphereGeometry(0.22, 18, 14);
-  xGeoms.push(blushGeom);
+  // Outer soft halo (lighter, larger, fading)
+  const haloColor = blushColor.clone().lerp(new THREE.Color(0xffeeee), 0.3);
+  const outerMat = new THREE.MeshStandardMaterial({
+    color: haloColor,
+    transparent: true,
+    opacity: 0.20,
+    roughness: 0.75,
+    metalness: 0.0,
+  });
+  xMats.push(outerMat);
+
+  const innerGeom = new THREE.SphereGeometry(0.18, 20, 14);
+  xGeoms.push(innerGeom);
+  const outerGeom = new THREE.SphereGeometry(0.26, 20, 14);
+  xGeoms.push(outerGeom);
 
   for (const side of [-1, 1] as const) {
-    const b = new THREE.Mesh(blushGeom, blushMat);
-    b.position.set(
+    // Outer halo (slightly behind so it appears around the inner dot)
+    const halo = new THREE.Mesh(outerGeom, outerMat);
+    halo.position.set(
       side * (cfg.cheekOffsetX - 0.06),
-      cfg.cheekOffsetY + 0.04,
-      cfg.cheekOffsetZ + 0.12,
+      cfg.cheekOffsetY + 0.05,
+      cfg.cheekOffsetZ + 0.10,
     );
-    // Very flat disk pressed against the skin surface.
-    b.scale.set(1.05, 0.86, 0.12);
-    head.add(b);
+    halo.scale.set(1.10, 0.92, 0.11);
+    head.add(halo);
+
+    // Inner saturated center
+    const inner = new THREE.Mesh(innerGeom, innerMat);
+    inner.position.set(
+      side * (cfg.cheekOffsetX - 0.06),
+      cfg.cheekOffsetY + 0.05,
+      cfg.cheekOffsetZ + 0.13,
+    );
+    inner.scale.set(1.05, 0.88, 0.12);
+    head.add(inner);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Eye makeup (woman) — soft shadow above lid + thin eyeliner
+// ---------------------------------------------------------------------------
+
+function buildEyeMakeup(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  // --- Eyeshadow: warm peach-pink dome above each upper lid ---
+  const shadowMat = new THREE.MeshStandardMaterial({
+    color: 0xd28a90,
+    transparent: true,
+    opacity: 0.20,
+    roughness: 0.85,
+    metalness: 0.0,
+  });
+  xMats.push(shadowMat);
+
+  const shadowGeom = new THREE.SphereGeometry(
+    cfg.eyeRadius + 0.012,
+    20,
+    12,
+    0,
+    Math.PI * 2,
+    0,
+    Math.PI * 0.42,
+  );
+  xGeoms.push(shadowGeom);
+
+  for (const side of [-1, 1] as const) {
+    const shadow = new THREE.Mesh(shadowGeom, shadowMat);
+    shadow.position.set(
+      side * cfg.eyeOffsetX,
+      cfg.eyeOffsetY + cfg.eyeRadius * 0.15,
+      cfg.eyeZ - 0.005,
+    );
+    shadow.scale.set(1.05, 0.55, 1.0);
+    head.add(shadow);
+  }
+
+  // --- Eyeliner: thin dark crescent along the upper lash line ---
+  const linerMat = new THREE.MeshStandardMaterial({
+    color: 0x1a0d0d,
+    roughness: 0.6,
+    metalness: 0.0,
+  });
+  xMats.push(linerMat);
+
+  const linerGeom = new THREE.SphereGeometry(cfg.eyeRadius + 0.008, 22, 8);
+  xGeoms.push(linerGeom);
+
+  for (const side of [-1, 1] as const) {
+    const liner = new THREE.Mesh(linerGeom, linerMat);
+    liner.position.set(
+      side * cfg.eyeOffsetX,
+      cfg.eyeOffsetY + cfg.eyeRadius * 0.83,
+      cfg.eyeZ + 0.005,
+    );
+    // Very thin in Y (just a line), tilted slightly back
+    liner.scale.set(1.05, 0.045, 0.55);
+    liner.rotation.set(-0.18, 0, 0);
+    head.add(liner);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lip detail (woman) — cupid's bow accent + glossy lower-lip highlight
+// ---------------------------------------------------------------------------
+
+function buildLipGloss(
+  mouthGroup: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  // --- Cupid's bow: small darker accent that defines the upper-lip peak ---
+  const bowColor = new THREE.Color(cfg.lipColor).multiplyScalar(0.78);
+  const bowMat = new THREE.MeshStandardMaterial({
+    color: bowColor,
+    roughness: 0.45,
+    metalness: 0.0,
+  });
+  xMats.push(bowMat);
+
+  const bowGeom = new THREE.SphereGeometry(0.020, 12, 10);
+  xGeoms.push(bowGeom);
+
+  for (const offsetX of [-0.018, 0.018] as const) {
+    const bow = new THREE.Mesh(bowGeom, bowMat);
+    bow.position.set(offsetX, cfg.lipTorusRadius * 0.18, 0.02);
+    bow.scale.set(1.0, 0.55, 0.5);
+    mouthGroup.add(bow);
+  }
+
+  // --- Lower-lip gloss: a bright thin curved highlight ---
+  const glossMat = new THREE.MeshStandardMaterial({
+    color: 0xffd6dc,
+    transparent: true,
+    opacity: 0.55,
+    roughness: 0.05,
+    metalness: 0.05,
+    emissive: 0xff9aa0,
+    emissiveIntensity: 0.12,
+  });
+  xMats.push(glossMat);
+
+  // Half-torus arc for the gloss line on lower lip
+  const glossGeom = new THREE.TorusGeometry(
+    cfg.lipTorusRadius * 0.62,
+    0.010,
+    8,
+    24,
+    Math.PI * 0.85,
+  );
+  xGeoms.push(glossGeom);
+
+  const gloss = new THREE.Mesh(glossGeom, glossMat);
+  gloss.position.set(0, -cfg.lipTorusRadius * 0.05, 0.035);
+  // Rotate so the arc opens upward, sitting on the lower lip
+  gloss.rotation.set(0, 0, Math.PI);
+  gloss.scale.set(1.0, 0.35, 0.6);
+  mouthGroup.add(gloss);
+}
+
+// ---------------------------------------------------------------------------
+// Eye accents (woman) — bigger highlight + accent dot + soft inner glow ring
+// ---------------------------------------------------------------------------
+
+function buildEyeAccents(
+  irisLeft: THREE.Group,
+  irisRight: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  // Soft inner glow: a lighter ring around the pupil for iris depth.
+  const glowColor = new THREE.Color(cfg.irisColor).lerp(
+    new THREE.Color(0xfff0d8),
+    0.55,
+  );
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: glowColor,
+    transparent: true,
+    opacity: 0.42,
+  });
+  xMats.push(glowMat);
+
+  const glowGeom = new THREE.RingGeometry(
+    cfg.irisRadius * 0.50,
+    cfg.irisRadius * 0.86,
+    32,
+  );
+  xGeoms.push(glowGeom);
+
+  // Larger primary catchlight
+  const mainGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.30, 18);
+  xGeoms.push(mainGeom);
+
+  // Small accent highlight on the opposite side
+  const accentGeom = new THREE.CircleGeometry(cfg.irisRadius * 0.13, 14);
+  xGeoms.push(accentGeom);
+
+  const whiteMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.95,
+  });
+  xMats.push(whiteMat);
+
+  const targets: Array<[THREE.Group, -1 | 1]> = [
+    [irisLeft, -1],
+    [irisRight, 1],
+  ];
+  for (const [iris, side] of targets) {
+    // Glow ring sits slightly above the iris disc.
+    const glow = new THREE.Mesh(glowGeom, glowMat);
+    glow.position.set(0, 0, cfg.eyeRadius + 0.0025);
+    iris.add(glow);
+
+    // Big catchlight up-and-outer
+    const main = new THREE.Mesh(mainGeom, whiteMat);
+    main.position.set(
+      -0.045 * side,
+      cfg.irisRadius * 0.42,
+      cfg.eyeRadius + 0.005,
+    );
+    iris.add(main);
+
+    // Small accent on the opposite side
+    const accent = new THREE.Mesh(accentGeom, whiteMat);
+    accent.position.set(
+      0.05 * side,
+      -cfg.irisRadius * 0.32,
+      cfg.eyeRadius + 0.0055,
+    );
+    iris.add(accent);
   }
 }
 
