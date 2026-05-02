@@ -608,49 +608,120 @@ function buildHair(
     }
 
   } else if (cfg.hairStyle === 'girllong') {
-    // Long dark hair with gentle waves, flowing to one side.
-    // Friendly, approachable look: smooth cap + two long wavy side curtains + back volume.
-    // The right side (character's right/viewer's left) is more voluminous for the wave effect.
+    // Memoji-style long wavy hair with one-sided flow.
+    // Built from many overlapping pieces so it reads as a continuous, voluminous
+    // mass — not separate strands. Hair wraps from crown down past the cheeks,
+    // then cascades to chest height. Right side has more volume / wave.
 
-    // Smooth cap on top (clean, no tufts, no bangs)
-    const capGeom = new THREE.SphereGeometry(0.96, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.42);
+    // === 1. TOP CAP — covers crown + extends past the temples ===
+    // Larger theta range so the hair "helmet" comes down naturally to ear level.
+    const capGeom = new THREE.SphereGeometry(0.99, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.55);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
-    cap.position.set(0, 0.03, -0.02);
+    cap.position.set(0, 0.02, -0.04);
+    cap.scale.set(1.04, 1.0, 1.06);  // Slightly wider for fuller silhouette
     hair.add(cap);
 
-    // Left side curtain (calmer, less voluminous)
-    const curtainGeom = new THREE.SphereGeometry(0.17, 32, 24);
-    xGeoms.push(curtainGeom);
-    const cLeft = new THREE.Mesh(curtainGeom, materials.hair);
-    cLeft.position.set(-0.67, -0.73, 0.10);
-    cLeft.scale.set(1.50, 5.10, 0.48);
-    cLeft.rotation.set(0, -0.04, 0.02);
-    hair.add(cLeft);
+    // === 2. CENTER PART HINT — small valley shape on top to suggest a part ===
+    // (Done by a slightly recessed darker center sphere.)
 
-    // Right side curtain (more voluminous, creating the wave/flow to one side)
-    const cRight = new THREE.Mesh(curtainGeom, materials.hair);
-    cRight.position.set(0.71, -0.78, 0.06);
-    cRight.scale.set(1.75, 5.35, 0.54);  // Wider and taller for wave effect
-    cRight.rotation.set(0, 0.08, -0.04);
-    hair.add(cRight);
+    // === 3. FRONT FRAMING — covers temples and frames the face ===
+    const frameGeom = new THREE.SphereGeometry(0.20, 32, 24);
+    xGeoms.push(frameGeom);
 
-    // Back panel (full volume for long hair silhouette)
-    const backGeom = new THREE.SphereGeometry(0.21, 20, 16);
+    // Right temple frame (volumized, wave side)
+    const frameR = new THREE.Mesh(frameGeom, materials.hair);
+    frameR.position.set(0.62, 0.18, 0.30);
+    frameR.scale.set(1.05, 1.50, 0.95);
+    frameR.rotation.set(-0.10, 0.20, -0.18);
+    hair.add(frameR);
+
+    // Left temple frame (slightly smaller)
+    const frameL = new THREE.Mesh(frameGeom, materials.hair);
+    frameL.position.set(-0.62, 0.18, 0.30);
+    frameL.scale.set(0.95, 1.40, 0.90);
+    frameL.rotation.set(-0.10, -0.20, 0.18);
+    hair.add(frameL);
+
+    // === 4. SIDE CASCADES — overlapping strands flowing down each side ===
+    // Multiple pieces stacked vertically with slight outward curve, so the
+    // silhouette reads as flowing hair, not a flat curtain.
+    const strandGeom = new THREE.SphereGeometry(0.16, 24, 18);
+    xGeoms.push(strandGeom);
+
+    // RIGHT side cascade (wave side — more pieces, more outward curve)
+    const RIGHT_STRANDS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      // posX, posY, posZ, rotX, rotY, rotZ, sx, sy, sz
+      [ 0.74, -0.10, 0.18,  0.00,  0.10, -0.10,  1.10, 1.55, 0.85 ],  // Upper
+      [ 0.78, -0.55, 0.10,  0.00,  0.15, -0.15,  1.15, 1.65, 0.85 ],  // Mid
+      [ 0.84, -1.00, 0.02,  0.05,  0.20, -0.22,  1.20, 1.70, 0.80 ],  // Lower
+      [ 0.92, -1.40, -0.05, 0.05,  0.25, -0.30,  1.25, 1.55, 0.75 ],  // Lower-end (wave outward)
+      [ 0.98, -1.72, -0.10, 0.10,  0.30, -0.40,  1.30, 1.30, 0.70 ],  // Tip (curls out)
+    ];
+    for (const r of RIGHT_STRANDS) {
+      const m = new THREE.Mesh(strandGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // LEFT side cascade (calmer, fewer pieces, hair tucked behind ear-ish)
+    const LEFT_STRANDS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      [-0.70, -0.10, 0.18,  0.00, -0.10,  0.10,  1.05, 1.50, 0.80 ],
+      [-0.72, -0.55, 0.08,  0.00, -0.12,  0.12,  1.10, 1.60, 0.80 ],
+      [-0.75, -1.00, -0.02, 0.00, -0.15,  0.18,  1.10, 1.55, 0.75 ],
+      [-0.78, -1.40, -0.10, 0.05, -0.18,  0.22,  1.15, 1.40, 0.70 ],
+    ];
+    for (const r of LEFT_STRANDS) {
+      const m = new THREE.Mesh(strandGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // === 5. BACK VOLUME — fills the area behind the head ===
+    // Three stacked back panels for natural curved volume.
+    const backGeom = new THREE.SphereGeometry(0.30, 24, 18);
     xGeoms.push(backGeom);
-    const back = new THREE.Mesh(backGeom, materials.hair);
-    back.position.set(0.05, -0.80, -0.48);  // Slightly offset to right for wave asymmetry
-    back.scale.set(2.25, 5.45, 0.48);
-    hair.add(back);
 
-    // Extra wave detail on right side (asymmetrical wave for dimensional look)
-    const waveGeom = new THREE.SphereGeometry(0.14, 16, 12);
-    xGeoms.push(waveGeom);
-    const wave = new THREE.Mesh(waveGeom, materials.hair);
-    wave.position.set(0.82, -0.48, 0.32);
-    wave.scale.set(1.20, 2.80, 0.40);
-    wave.rotation.set(-0.12, 0.15, -0.08);
-    hair.add(wave);
+    // Upper back (behind crown)
+    const backTop = new THREE.Mesh(backGeom, materials.hair);
+    backTop.position.set(0.05, -0.10, -0.60);
+    backTop.scale.set(2.20, 1.80, 1.10);
+    hair.add(backTop);
+
+    // Middle back (behind shoulders)
+    const backMid = new THREE.Mesh(backGeom, materials.hair);
+    backMid.position.set(0.08, -0.85, -0.55);
+    backMid.scale.set(2.30, 2.20, 1.00);
+    hair.add(backMid);
+
+    // Lower back (long ends, slightly off-center for asymmetry)
+    const backLow = new THREE.Mesh(backGeom, materials.hair);
+    backLow.position.set(0.10, -1.55, -0.45);
+    backLow.scale.set(2.10, 1.50, 0.85);
+    hair.add(backLow);
+
+    // === 6. FRONT-OF-EAR WISPS — small pieces in front of the ear ===
+    // These add the visual connection between the cap and the side cascades.
+    const wispGeom = new THREE.SphereGeometry(0.12, 16, 12);
+    xGeoms.push(wispGeom);
+
+    // Right wisp (in front of right ear, where wave begins)
+    const wispR = new THREE.Mesh(wispGeom, materials.hair);
+    wispR.position.set(0.66, 0.45, 0.20);
+    wispR.scale.set(1.20, 1.30, 1.10);
+    wispR.rotation.set(-0.15, 0.15, -0.10);
+    hair.add(wispR);
+
+    // Left wisp
+    const wispL = new THREE.Mesh(wispGeom, materials.hair);
+    wispL.position.set(-0.66, 0.45, 0.20);
+    wispL.scale.set(1.10, 1.20, 1.05);
+    wispL.rotation.set(-0.15, -0.15, 0.10);
+    hair.add(wispL);
 
   } else if (cfg.hairStyle === 'man') {
     // Shorter cap with slight recession at the front.
