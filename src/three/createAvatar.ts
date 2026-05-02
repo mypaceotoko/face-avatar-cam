@@ -86,10 +86,13 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   head.add(skull);
 
   // ---- Nose -----------------------------------------------------------------
-  const noseGeom = new THREE.SphereGeometry(cfg.noseRadius, 48, 48);
+  // Use cone-like shape for more realistic tapered appearance
+  const noseGeom = new THREE.ConeGeometry(cfg.noseRadius * 0.65, cfg.noseRadius * 1.3, 32, 16);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
   nose.position.set(0, cfg.noseOffsetY, cfg.noseZ);
+  nose.rotation.x = Math.PI * 0.5; // point down
   nose.scale.set(cfg.noseScaleX, cfg.noseScaleY, cfg.noseScaleZ);
+  xGeoms.push(noseGeom);
   head.add(nose);
 
   // ---- Ears -----------------------------------------------------------------
@@ -138,6 +141,20 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     iris.position.set(0, 0, sceleraR + 0.001);
     irisRoot.add(iris);
 
+    // Inner iris detail for more depth (darker ring)
+    const irisDetailGeom = new THREE.RingGeometry(cfg.irisRadius * 0.75, cfg.irisRadius * 0.95, 48);
+    const irisDetail = new THREE.Mesh(
+      irisDetailGeom,
+      new THREE.MeshStandardMaterial({
+        color: 0x2a1810,
+        roughness: 0.45,
+        metalness: 0.02,
+      }),
+    );
+    irisDetail.position.set(0, 0, sceleraR + 0.0012);
+    irisRoot.add(irisDetail);
+    xMats.push(irisDetail.material as THREE.Material);
+
     const ring = new THREE.Mesh(
       irisRingGeom,
       new THREE.MeshBasicMaterial({ color: 0x1a0d04 }),
@@ -183,6 +200,29 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   lidRightLower.rotation.x = Math.PI;
   lidRightLower.scale.y = 0.05;
   head.add(lidRightLower);
+
+  // ---- Eye socket shadows (subtle depth) ------------------------------------
+  const eyeShadowMat = new THREE.MeshStandardMaterial({
+    color: 0x000000,
+    roughness: 0.85,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.08,
+    side: THREE.FrontSide,
+  });
+  xMats.push(eyeShadowMat);
+
+  // Subtle shadow behind upper lids for depth
+  const shadowGeom = new THREE.SphereGeometry(sceleraR * 1.15, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.3);
+  const shadowLeft = new THREE.Mesh(shadowGeom, eyeShadowMat);
+  shadowLeft.position.set(-eyeOffsetX, eyeY + sceleraR * 0.3, eyeZ);
+  shadowLeft.scale.set(1.0, 0.4, 1.2);
+  head.add(shadowLeft);
+
+  const shadowRight = new THREE.Mesh(shadowGeom, eyeShadowMat);
+  shadowRight.position.set(eyeOffsetX, eyeY + sceleraR * 0.3, eyeZ);
+  shadowRight.scale.set(1.0, 0.4, 1.2);
+  head.add(shadowRight);
 
   // ---- Eyelashes (woman only) -----------------------------------------------
   if (cfg.hasLashes) {
@@ -341,13 +381,13 @@ function buildHair(
   hair.name = 'hair';
 
   if (cfg.hairStyle === 'child') {
-    const capGeom = new THREE.SphereGeometry(0.94, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const capGeom = new THREE.SphereGeometry(0.94, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.55);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
     cap.position.set(0, 0.02, 0);
     hair.add(cap);
 
-    const tuftGeom = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const tuftGeom = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55);
     xGeoms.push(tuftGeom);
     const TUFTS: Array<{ pos: [number, number, number]; rot: [number, number, number]; scale: [number, number, number] }> = [
       { pos: [-0.55, 0.62, 0.45], rot: [-0.5, 0.4, 0.4], scale: [0.32, 0.22, 0.32] },
@@ -378,7 +418,7 @@ function buildHair(
     //  4. Thin face-framing strips that frame the cheeks
 
     // --- smooth top cap: theta 0.38*PI keeps cap above eye level ---
-    const capGeom = new THREE.SphereGeometry(0.972, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.38);
+    const capGeom = new THREE.SphereGeometry(0.972, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.38);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
     cap.position.set(0, 0.05, 0);
@@ -386,7 +426,7 @@ function buildHair(
 
     // --- main side curtains (left / right, mirrored) ---
     // Each is a wide, tall, thin ellipsoid — the "curtain" of long straight hair.
-    const curtainGeom = new THREE.SphereGeometry(0.20, 18, 14);
+    const curtainGeom = new THREE.SphereGeometry(0.20, 32, 24);
     xGeoms.push(curtainGeom);
     for (const side of [-1, 1] as const) {
       const c = new THREE.Mesh(curtainGeom, materials.hair);

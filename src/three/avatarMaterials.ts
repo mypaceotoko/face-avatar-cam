@@ -43,17 +43,17 @@ export type ColorOverrides = Partial<{
 export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMaterials {
   const p = { ...PALETTE, ...overrides };
 
-  // Skin emissive: warm tint derived from the base skin color so darker
-  // characters don't fall to flat black under the two-light rig.
+  // Skin: More natural with subtle subsurface scattering appearance
+  // Reduce emissive intensity for more realistic, less cartoon look
   const skinBase = new THREE.Color(p.skin);
-  const emissiveSkin = skinBase.clone().multiplyScalar(0.14);
+  const emissiveSkin = skinBase.clone().multiplyScalar(0.08);
 
   const skin = new THREE.MeshStandardMaterial({
     color: p.skin,
-    roughness: 0.72,
+    roughness: 0.68,
     metalness: 0.0,
     emissive: emissiveSkin,
-    emissiveIntensity: 1.0,
+    emissiveIntensity: 0.8,
   });
   const cheek = new THREE.MeshStandardMaterial({
     color: p.cheek,
@@ -74,20 +74,29 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
   });
   const sclera = new THREE.MeshStandardMaterial({
     color: PALETTE.sclera,
-    roughness: 0.18,
+    roughness: 0.20,
     metalness: 0.0,
+    // Slightly warm emissive to match skin undertone
+    emissive: new THREE.Color(0xf5e6e0),
+    emissiveIntensity: 0.15,
   });
   const iris = new THREE.MeshStandardMaterial({
     color: p.iris,
-    roughness: 0.42,
-    metalness: 0.04,
+    roughness: 0.38,
+    metalness: 0.08,
+    // Natural iris has subtle warm glow
+    emissive: new THREE.Color(p.iris).multiplyScalar(0.15),
+    emissiveIntensity: 0.3,
   });
   const pupil = new THREE.MeshBasicMaterial({ color: PALETTE.pupil });
   const hilite = new THREE.MeshBasicMaterial({ color: PALETTE.hilite });
   const lip = new THREE.MeshStandardMaterial({
     color: p.lip,
-    roughness: 0.38,
-    metalness: 0.02,
+    roughness: 0.32,
+    metalness: 0.03,
+    // Lips have natural subtle glow
+    emissive: new THREE.Color(p.lip).multiplyScalar(0.2),
+    emissiveIntensity: 0.4,
   });
   const mouthCavity = new THREE.MeshStandardMaterial({
     color: PALETTE.mouthCavity,
