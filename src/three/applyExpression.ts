@@ -117,38 +117,46 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   );
 
   // ============= Eyes ======================================================
-  // Lid Y goes from baseline 0.05 (open) to 1.0 (closed). Squint adds extra
-  // close to BOTH lids (upper drops, lower rises) so a smile-squint reads
-  // properly instead of just darkening from the top.
+  // Blink readability: when closeU is high we BOTH (a) drop the upper lid much
+  // farther than before AND (b) collapse the eyeball Y scale so the white +
+  // iris visibly disappear behind the lid. Without (b) the big Memoji-sized
+  // sclera kept poking out and "blink" never read on screen.
   const closeUL = clamp(ey.blinkL + ey.squintL * 0.45, 0, 1);
   const closeUR = clamp(ey.blinkR + ey.squintR * 0.45, 0, 1);
+
+  // Upper lid travels from baseline ~0.05 all the way to 1.45 so it fully
+  // overshoots the sclera's top hemisphere on a hard blink.
   rig.parts.lidLeftUpper.scale.y =
-    d.lidLeftUpperScale.y + (1.0 - d.lidLeftUpperScale.y) * closeUL;
+    d.lidLeftUpperScale.y + (1.45 - d.lidLeftUpperScale.y) * closeUL;
   rig.parts.lidRightUpper.scale.y =
-    d.lidRightUpperScale.y + (1.0 - d.lidRightUpperScale.y) * closeUR;
+    d.lidRightUpperScale.y + (1.45 - d.lidRightUpperScale.y) * closeUR;
 
-  // Lower lid: no full-blink contribution; rises with squint only. Cap at
-  // ~0.6 so it never meets the upper lid except during a smile-blink combo.
-  const closeLL = clamp(ey.squintL * 0.85 + ey.blinkL * 0.3, 0, 1);
-  const closeLR = clamp(ey.squintR * 0.85 + ey.blinkR * 0.3, 0, 1);
-  rig.parts.lidLeftLower.scale.y = d.lidLeftLowerScale.y + 0.55 * closeLL;
-  rig.parts.lidRightLower.scale.y = d.lidRightLowerScale.y + 0.55 * closeLR;
-  // Pull the lower lid up slightly with squint so it overlaps the eye more.
+  // Lower lid: pumped contribution from blink (0.3 → 0.85) and bigger Y
+  // growth (0.55 → 1.05) so it meets the upper lid in the middle of the eye
+  // on a full blink instead of staying hidden under the eye.
+  const closeLL = clamp(ey.squintL * 0.85 + ey.blinkL * 0.85, 0, 1);
+  const closeLR = clamp(ey.squintR * 0.85 + ey.blinkR * 0.85, 0, 1);
+  rig.parts.lidLeftLower.scale.y = d.lidLeftLowerScale.y + 1.05 * closeLL;
+  rig.parts.lidRightLower.scale.y = d.lidRightLowerScale.y + 1.05 * closeLR;
+  // Pull lower lid up further (0.06 → 0.13) so it visibly rises on a blink.
   rig.parts.lidLeftLower.position.y =
-    d.lidLeftLowerPosition.y + 0.06 * closeLL;
+    d.lidLeftLowerPosition.y + 0.13 * closeLL;
   rig.parts.lidRightLower.position.y =
-    d.lidRightLowerPosition.y + 0.06 * closeLR;
+    d.lidRightLowerPosition.y + 0.13 * closeLR;
 
-  // Eye widening: bumps the eyeball up to 1.18 (was 1.12) and pushes brows
-  // up via the brows block below.
+  // Eye widening on surprise + COLLAPSE on blink. The blink term squeezes
+  // the eyeball vertically to ~5% of normal size so the iris/pupil literally
+  // vanish during a blink. This is the change that makes "目を閉じた" obvious.
+  const blinkSquishL = 1 - 0.95 * ey.blinkL;
+  const blinkSquishR = 1 - 0.95 * ey.blinkR;
   rig.parts.eyeLeft.scale.set(
     d.eyeLeftScale.x * (1 + 0.13 * ey.wideL),
-    d.eyeLeftScale.y * (1 + 0.20 * ey.wideL),
+    d.eyeLeftScale.y * (1 + 0.20 * ey.wideL) * blinkSquishL,
     d.eyeLeftScale.z,
   );
   rig.parts.eyeRight.scale.set(
     d.eyeRightScale.x * (1 + 0.13 * ey.wideR),
-    d.eyeRightScale.y * (1 + 0.20 * ey.wideR),
+    d.eyeRightScale.y * (1 + 0.20 * ey.wideR) * blinkSquishR,
     d.eyeRightScale.z,
   );
 
