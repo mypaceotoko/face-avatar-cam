@@ -57,20 +57,20 @@ export function createAvatar(): AvatarRig {
   root.add(head);
 
   // ---- Skull ----------------------------------------------------------------
-  const skullGeom = new THREE.SphereGeometry(0.9, 64, 64);
+  const skullGeom = new THREE.SphereGeometry(0.9, 128, 128);
   const skull = new THREE.Mesh(skullGeom, materials.skin);
   skull.scale.set(1.0, 1.05, 0.95);
   head.add(skull);
 
   // ---- Nose -----------------------------------------------------------------
-  const noseGeom = new THREE.SphereGeometry(0.1, 24, 24);
+  const noseGeom = new THREE.SphereGeometry(0.1, 48, 48);
   const nose = new THREE.Mesh(noseGeom, materials.skin);
   nose.position.set(0, -0.05, 0.92);
   nose.scale.set(1.0, 0.95, 0.85);
   head.add(nose);
 
   // ---- Ears -----------------------------------------------------------------
-  const earGeom = new THREE.SphereGeometry(0.13, 20, 20);
+  const earGeom = new THREE.SphereGeometry(0.13, 48, 48);
   const earLeft = new THREE.Mesh(earGeom, materials.skin);
   earLeft.position.set(-0.85, 0.0, 0.0);
   earLeft.scale.set(0.55, 1.0, 0.45);
@@ -84,14 +84,14 @@ export function createAvatar(): AvatarRig {
   const hair = new THREE.Group();
   hair.name = 'hair';
   // Main cap covering the upper back of the head
-  const capGeom = new THREE.SphereGeometry(0.94, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  const capGeom = new THREE.SphereGeometry(0.94, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.55);
   const cap = new THREE.Mesh(capGeom, materials.hair);
   cap.position.set(0, 0.02, 0);
   hair.add(cap);
 
   // Tufts: small half-sphere clumps stacked across the front and crown to give
   // the chunky Memoji look. Each tuft is slightly different in size and angle.
-  const tuftGeom = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  const tuftGeom = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.55);
   const TUFTS: Array<{
     pos: [number, number, number];
     rot: [number, number, number];
@@ -124,10 +124,10 @@ export function createAvatar(): AvatarRig {
   const eyeZ = 0.78;
   const sceleraR = 0.16;
 
-  const sceleraGeom = new THREE.SphereGeometry(sceleraR, 32, 32);
-  const irisGeom = new THREE.CircleGeometry(0.085, 32);
-  const pupilGeom = new THREE.CircleGeometry(0.04, 24);
-  const hiliteGeom = new THREE.CircleGeometry(0.018, 16);
+  const sceleraGeom = new THREE.SphereGeometry(sceleraR, 64, 64);
+  const irisGeom = new THREE.CircleGeometry(0.085, 64);
+  const pupilGeom = new THREE.CircleGeometry(0.04, 48);
+  const hiliteGeom = new THREE.CircleGeometry(0.018, 32);
 
   function makeEye(side: -1 | 1) {
     const g = new THREE.Group();
@@ -161,8 +161,8 @@ export function createAvatar(): AvatarRig {
   // ---- Eyelids (skin-coloured upper hemispheres covering the eyes) ----------
   const lidGeom = new THREE.SphereGeometry(
     sceleraR + 0.005,
-    24,
-    24,
+    48,
+    48,
     0,
     Math.PI * 2,
     0,
@@ -194,7 +194,7 @@ export function createAvatar(): AvatarRig {
   mouthGroup.position.set(0, -0.32, 0.82);
   head.add(mouthGroup);
 
-  const lipsGeom = new THREE.TorusGeometry(0.16, 0.035, 16, 40);
+  const lipsGeom = new THREE.TorusGeometry(0.16, 0.035, 32, 80);
   const lipsOuter = new THREE.Mesh(lipsGeom, materials.lip);
   lipsOuter.scale.set(1.0, 0.55, 0.6);
   // Slight smile baseline by tilting the torus forward at the bottom.
@@ -203,8 +203,8 @@ export function createAvatar(): AvatarRig {
 
   const cavityGeom = new THREE.SphereGeometry(
     0.13,
-    24,
-    24,
+    48,
+    48,
     0,
     Math.PI * 2,
     Math.PI / 2,
@@ -217,7 +217,7 @@ export function createAvatar(): AvatarRig {
 
   // ---- Tongue ---------------------------------------------------------------
   // Sits tucked just behind the lower lip; pushed forward when tongueOut fires.
-  const tongueGeom = new THREE.SphereGeometry(0.09, 20, 20);
+  const tongueGeom = new THREE.SphereGeometry(0.09, 40, 40);
   const tongue = new THREE.Mesh(tongueGeom, materials.tongue);
   tongue.position.set(0, -0.02, -0.04);
   tongue.scale.set(1.0, 0.55, 1.1);

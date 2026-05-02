@@ -36,46 +36,51 @@ export type AvatarMaterials = {
 export function createAvatarMaterials(): AvatarMaterials {
   const skin = new THREE.MeshStandardMaterial({
     color: PALETTE.skin,
-    roughness: 0.42,
+    roughness: 0.38,
     metalness: 0.0,
+    emissiveIntensity: 0.05,
   });
   const hair = new THREE.MeshStandardMaterial({
     color: PALETTE.hair,
-    roughness: 0.55,
-    metalness: 0.0,
+    roughness: 0.48,
+    metalness: 0.02,
+    emissiveIntensity: 0.08,
   });
   const brow = new THREE.MeshStandardMaterial({
     color: PALETTE.brow,
-    roughness: 0.6,
-    metalness: 0.0,
+    roughness: 0.55,
+    metalness: 0.01,
   });
   const sclera = new THREE.MeshStandardMaterial({
     color: PALETTE.sclera,
-    roughness: 0.25,
+    roughness: 0.15,
     metalness: 0.0,
   });
   const iris = new THREE.MeshStandardMaterial({
     color: PALETTE.iris,
-    roughness: 0.5,
-    metalness: 0.0,
+    roughness: 0.35,
+    metalness: 0.05,
+    emissiveIntensity: 0.1,
   });
   const pupil = new THREE.MeshBasicMaterial({ color: PALETTE.pupil });
   const hilite = new THREE.MeshBasicMaterial({ color: PALETTE.hilite });
   const lip = new THREE.MeshStandardMaterial({
     color: PALETTE.lip,
-    roughness: 0.45,
-    metalness: 0.0,
+    roughness: 0.35,
+    metalness: 0.02,
+    emissiveIntensity: 0.12,
   });
   const mouthCavity = new THREE.MeshStandardMaterial({
     color: PALETTE.mouthCavity,
-    roughness: 0.7,
+    roughness: 0.8,
     metalness: 0.0,
     side: THREE.DoubleSide,
   });
   const tongue = new THREE.MeshStandardMaterial({
     color: PALETTE.tongue,
-    roughness: 0.5,
-    metalness: 0.0,
+    roughness: 0.4,
+    metalness: 0.01,
+    emissiveIntensity: 0.08,
   });
 
   const dispose = () => {
