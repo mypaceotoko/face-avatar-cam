@@ -377,11 +377,11 @@ function buildHair(
     //  3. Wide back panel to complete the volume
     //  4. Thin face-framing strips that frame the cheeks
 
-    // --- smooth top cap ---
-    const capGeom = new THREE.SphereGeometry(0.972, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.58);
+    // --- smooth top cap: theta 0.38*PI keeps cap above eye level ---
+    const capGeom = new THREE.SphereGeometry(0.972, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.38);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
-    cap.position.set(0, 0.015, 0);
+    cap.position.set(0, 0.05, 0);
     hair.add(cap);
 
     // --- main side curtains (left / right, mirrored) ---
@@ -420,22 +420,22 @@ function buildHair(
       const bangMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor, roughness: 0.52, metalness: 0.0 });
       xMats.push(bangMat);
 
-      // Main bang strip sweeping diagonally across the forehead
+      // Main bang strip: sits on the forehead (between eye-top and cap-bottom)
       const bangGeom = new THREE.SphereGeometry(0.15, 16, 10);
       xGeoms.push(bangGeom);
       const bang = new THREE.Mesh(bangGeom, bangMat);
-      bang.position.set(-0.05, 0.52, 0.68);
-      bang.scale.set(2.70, 0.52, 0.25);
-      bang.rotation.set(-0.20, 0.04, -0.08);
+      bang.position.set(-0.10, 0.37, 0.75);
+      bang.scale.set(2.50, 0.55, 0.22);
+      bang.rotation.set(-0.18, 0.04, -0.06);
       hair.add(bang);
 
-      // Wispy piece at the left temple for natural asymmetry
+      // Wispy piece at left temple, just above the eye
       const bangWispGeom = new THREE.SphereGeometry(0.10, 12, 8);
       xGeoms.push(bangWispGeom);
       const wisp = new THREE.Mesh(bangWispGeom, bangMat);
-      wisp.position.set(-0.42, 0.44, 0.62);
-      wisp.scale.set(1.10, 0.48, 0.28);
-      wisp.rotation.set(-0.24, 0.10, 0.16);
+      wisp.position.set(-0.44, 0.30, 0.72);
+      wisp.scale.set(0.90, 0.48, 0.24);
+      wisp.rotation.set(-0.22, 0.10, 0.14);
       hair.add(wisp);
     }
 
