@@ -54,6 +54,12 @@ export interface CharacterConfig {
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
   blushColor: number;
+  // Beauty / Memoji-quality detailing
+  hasEyeMakeup: boolean;       // soft eyeshadow + thin eyeliner
+  hasLipGloss: boolean;        // cupid's bow accent + glossy lower lip
+  hasHairBangs: boolean;       // side-swept front bangs
+  hasHairHighlights: boolean;  // subtle lighter strands embedded in hair
+  hasEyeAccents: boolean;      // larger iris highlight + glow ring + accent dot
   hasBeard: boolean;
   beardColor: number;
   beardStyle: 'none' | 'stubble' | 'full';
@@ -106,6 +112,11 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasLashes: false,
     hasBlush: false,
     blushColor: 0xff8888,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
     hasBeard: false,
     beardColor: 0x1a0d06,
     beardStyle: 'none',
@@ -163,6 +174,11 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasLashes: true,
     hasBlush: true,
     blushColor: 0xff8890,
+    hasEyeMakeup: true,
+    hasLipGloss: true,
+    hasHairBangs: true,
+    hasHairHighlights: true,
+    hasEyeAccents: true,
     hasBeard: false,
     beardColor: 0x1e0e06,
     beardStyle: 'none',
@@ -214,6 +230,11 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasLashes: false,
     hasBlush: false,
     blushColor: 0xff8888,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
     hasBeard: true,
     beardColor: 0x1e1208,
     beardStyle: 'stubble',
@@ -265,6 +286,11 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasLashes: false,
     hasBlush: false,
     blushColor: 0xff8888,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
     hasBeard: true,
     beardColor: 0xd0c8c0,
     beardStyle: 'full',
