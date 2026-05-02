@@ -86,8 +86,16 @@ body,
   color: #ddd;
   pointer-events: none;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 220px;
+  max-height: calc(100% - 80px);
+  overflow-y: auto;
+}
+
+.debug-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 4px 0;
 }
 
 .debug-row {
@@ -271,6 +279,35 @@ body,
 .btn--ghost {
   background: transparent;
   border: 1px solid #333;
+}
+
+.btn--green {
+  background: #00b140;
+  color: #001a08;
+}
+
+.face-selector {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #222;
+}
+
+.btn--face {
+  flex: 1;
+  max-width: 88px;
+  padding: 10px 8px;
+  font-size: 13px;
+  background: #222;
+  border: 1.5px solid transparent;
+}
+
+.btn--face-active {
+  background: #1a2a3a;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .status {

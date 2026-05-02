@@ -1,19 +1,26 @@
 import { useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Calibration } from '../face/calibration';
+import { ExpressionEngine } from '../face/expression';
 import { BlendshapeSmoother } from '../face/smoothing';
-import { emptyBlendshapes, type FaceState, type BlendshapeMap } from '../face/types';
+import {
+  emptyBlendshapes,
+  emptyExpressionState,
+  type BlendshapeMap,
+  type ExpressionState,
+  type FaceState,
+} from '../face/types';
 import { applyExpression, applyHeadPose } from '../three/applyExpression';
+import { type CharacterType } from '../three/avatarCharacters';
 import { createAvatar, type AvatarRig } from '../three/createAvatar';
 
-// Sized large enough that the avatar head fully occludes the user's real face
-// at typical front-camera selfie distance; previous value (8) left visible
-// hair / chin / forehead around the edges.
 const HEAD_SCALE_CM = 14;
 const PLACEHOLDER_Z_CM = -55;
 
 export type AvatarController = {
   rig: React.MutableRefObject<AvatarRig | null>;
+  /** Current performance state — updated every frame, exposed for debug UI. */
+  expression: React.MutableRefObject<ExpressionState>;
   setTracking: (on: boolean) => void;
   isTracking: () => boolean;
   startCalibration: (durationMs?: number) => void;
@@ -23,31 +30,38 @@ export type AvatarController = {
 export function useAvatarRig(
   parent: THREE.Group | null,
   faceStateRef: React.MutableRefObject<FaceState>,
+  characterType: CharacterType = 'child',
 ): AvatarController {
   const rigRef = useRef<AvatarRig | null>(null);
   const trackingRef = useRef(true);
   const smootherRef = useRef(new BlendshapeSmoother());
   const calibrationRef = useRef(new Calibration());
+  const engineRef = useRef(new ExpressionEngine());
   const scratchBs = useRef<BlendshapeMap>(emptyBlendshapes());
+  const expressionRef = useRef<ExpressionState>(emptyExpressionState());
 
   useEffect(() => {
     if (!parent) return;
 
-    const rig = createAvatar();
+    const rig = createAvatar(characterType);
     rig.root.scale.setScalar(HEAD_SCALE_CM);
     rig.root.position.set(0, 0, PLACEHOLDER_Z_CM);
     parent.add(rig.root);
     rigRef.current = rig;
+
+    // Reset smoothing and calibration so every character starts from a
+    // neutral baseline rather than inheriting the previous character's state.
+    smootherRef.current.reset();
+    calibrationRef.current.reset();
 
     let raf = 0;
     const tick = () => {
       const r = rigRef.current;
       if (r) {
         const fs = faceStateRef.current;
+        const now = performance.now();
         if (trackingRef.current && fs.detected) {
           applyHeadPose(r, fs.headMatrix);
-          // Copy raw blendshapes into a scratch object; calibration mutates
-          // the values; smoother holds rolling state.
           const raw = scratchBs.current;
           const src = fs.bs;
           for (const k in src) {
@@ -55,15 +69,24 @@ export function useAvatarRig(
               src as unknown as Record<string, number>
             )[k];
           }
-          calibrationRef.current.feed(fs.bs, performance.now());
+          calibrationRef.current.feed(fs.bs, now);
           calibrationRef.current.apply(raw);
           const smoothed = smootherRef.current.update(raw);
-          applyExpression(r, smoothed);
+          const expr = engineRef.current.compute(smoothed, true, now);
+          expressionRef.current = expr;
+          applyExpression(r, expr);
         } else if (!trackingRef.current) {
-          // Tracking off: park at the placeholder pose and decay expression.
           r.root.position.lerp(new THREE.Vector3(0, 0, PLACEHOLDER_Z_CM), 0.15);
           r.root.quaternion.slerp(new THREE.Quaternion(), 0.15);
-          applyExpression(r, smootherRef.current.update(emptyBlendshapes()));
+          const smoothed = smootherRef.current.update(emptyBlendshapes());
+          const expr = engineRef.current.compute(smoothed, true, now);
+          expressionRef.current = expr;
+          applyExpression(r, expr);
+        } else {
+          const smoothed = smootherRef.current.update(emptyBlendshapes());
+          const expr = engineRef.current.compute(smoothed, false, now);
+          expressionRef.current = expr;
+          applyExpression(r, expr);
         }
       }
       raf = requestAnimationFrame(tick);
@@ -76,7 +99,7 @@ export function useAvatarRig(
       rig.dispose();
       rigRef.current = null;
     };
-  }, [parent, faceStateRef]);
+  }, [parent, faceStateRef, characterType]);
 
   const setTracking = useCallback((on: boolean) => {
     trackingRef.current = on;
@@ -89,5 +112,12 @@ export function useAvatarRig(
     calibrationRef.current.reset();
   }, []);
 
-  return { rig: rigRef, setTracking, isTracking, startCalibration, resetCalibration };
+  return {
+    rig: rigRef,
+    expression: expressionRef,
+    setTracking,
+    isTracking,
+    startCalibration,
+    resetCalibration,
+  };
 }
