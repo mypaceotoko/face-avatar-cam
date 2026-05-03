@@ -51,16 +51,18 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
 
   // Skin: smooth, glossy Memoji feel.
   // Lower roughness = shinier (Memoji has a noticeable specular highlight).
-  // Warm emissive ensures it never falls dark in shadow.
+  // Emissive is kept faint so the room env map (set on the scene) supplies
+  // the actual fill light rather than glowing the skin from inside.
   const skinBase = new THREE.Color(p.skin);
-  const emissiveSkin = skinBase.clone().multiplyScalar(0.18);
+  const emissiveSkin = skinBase.clone().multiplyScalar(0.06);
 
   const skin = new THREE.MeshStandardMaterial({
     color: p.skin,
-    roughness: 0.42,           // Memoji-glossy
+    roughness: 0.45,
     metalness: 0.0,
     emissive: emissiveSkin,
     emissiveIntensity: 1.0,
+    envMapIntensity: 0.55,
   });
 
   // Cheek blush — additive overlay sphere
@@ -72,13 +74,15 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
     opacity: 0.0,
   });
 
-  // Hair: glossy chocolate, very smooth
+  // Hair: glossy chocolate, very smooth. envMap drives most of the highlight
+  // so the hair shows real strands of specular as the head turns.
   const hair = new THREE.MeshStandardMaterial({
     color: p.hair,
     roughness: 0.38,
     metalness: 0.05,
-    emissive: new THREE.Color(p.hair).multiplyScalar(0.12),
-    emissiveIntensity: 0.6,
+    emissive: new THREE.Color(p.hair).multiplyScalar(0.04),
+    emissiveIntensity: 0.5,
+    envMapIntensity: 0.7,
   });
 
   const brow = new THREE.MeshStandardMaterial({
@@ -87,13 +91,15 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
     metalness: 0.0,
   });
 
-  // Sclera (eye white): subtle warmth, glossy
+  // Sclera (eye white): subtle warmth, very glossy so the env map highlight
+  // gives the eye a wet look without painting one in.
   const sclera = new THREE.MeshStandardMaterial({
     color: PALETTE.sclera,
     roughness: 0.18,
     metalness: 0.0,
     emissive: new THREE.Color(0xf5e6d6),
-    emissiveIntensity: 0.18,
+    emissiveIntensity: 0.08,
+    envMapIntensity: 1.1,
   });
 
   // Iris: rich, slightly luminous brown
@@ -101,20 +107,23 @@ export function createAvatarMaterials(overrides: ColorOverrides = {}): AvatarMat
     color: p.iris,
     roughness: 0.3,
     metalness: 0.08,
-    emissive: new THREE.Color(p.iris).multiplyScalar(0.25),
-    emissiveIntensity: 0.5,
+    emissive: new THREE.Color(p.iris).multiplyScalar(0.18),
+    emissiveIntensity: 0.4,
+    envMapIntensity: 0.9,
   });
 
   const pupil = new THREE.MeshBasicMaterial({ color: PALETTE.pupil });
   const hilite = new THREE.MeshBasicMaterial({ color: PALETTE.hilite });
 
-  // Lips: glossy, juicy
+  // Lips: glossy, juicy. Lower emissive + envMap = the wet shine moves with
+  // the head instead of being a flat painted glow.
   const lip = new THREE.MeshStandardMaterial({
     color: p.lip,
     roughness: 0.28,
     metalness: 0.04,
-    emissive: new THREE.Color(p.lip).multiplyScalar(0.18),
-    emissiveIntensity: 0.5,
+    emissive: new THREE.Color(p.lip).multiplyScalar(0.06),
+    emissiveIntensity: 0.4,
+    envMapIntensity: 0.85,
   });
 
   const mouthCavity = new THREE.MeshStandardMaterial({

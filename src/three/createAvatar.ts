@@ -404,6 +404,31 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     materials.dispose();
   };
 
+  // Self-shadowing: enable cast/receive on the opaque meshes so the key light
+  // can drop a soft shadow from hair onto the forehead, brow onto the cheek,
+  // and lid onto the eye. Skip transparent or interior meshes (cheek blush,
+  // teeth, mouth cavity, tongue, iris stack) — they either fade in/out or sit
+  // behind opaque geometry and would cause artefacts.
+  const SHADOW_SKIP = new Set<THREE.Object3D>([
+    cheekLeft,
+    cheekRight,
+    teeth,
+    mouthCavity,
+    tongue,
+    left.irisRoot,
+    right.irisRoot,
+  ]);
+  head.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    let parent: THREE.Object3D | null = o;
+    while (parent) {
+      if (SHADOW_SKIP.has(parent)) return;
+      parent = parent.parent;
+    }
+    o.castShadow = true;
+    o.receiveShadow = true;
+  });
+
   return {
     root,
     head,
