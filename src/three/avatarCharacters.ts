@@ -209,49 +209,50 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasWrinkles: false,
   },
 
-  // Reference: friendly girl with warm bright yellow skin, large brown Memoji eyes,
-  // long dark brown wavy hair flowing to one side, soft gentle expression
+  // Reference: refined Memoji girl - smooth face contours, large but elegant eyes,
+  // soft expression, dark brown long wavy hair flowing to one side.
+  // Key: clean forehead visible, not heavy/dark on upper face. Polished, elegant aesthetic.
   girl: {
     labelJa: '少女',
-    // Round head with gentle proportions
-    headScaleX: 1.02,
-    headScaleY: 1.05,
-    headScaleZ: 0.99,
-    // Large expressive Memoji eyes with warm brown irises
-    eyeRadius: 0.240,
-    eyeOffsetX: 0.305,
-    eyeOffsetY: 0.085,
+    // Smooth, gently rounded head (not square)
+    headScaleX: 1.00,
+    headScaleY: 1.06,
+    headScaleZ: 0.97,
+    // Large but refined eyes - elegant, not oversized/scary
+    eyeRadius: 0.232,
+    eyeOffsetX: 0.308,
+    eyeOffsetY: 0.092,
     eyeZ: 0.770,
-    irisRadius: 0.162,
-    // Soft, natural-looking brows — straight-ish and gentle
-    browWidth: 0.28,
-    browHeight: 0.056,
-    browDepth: 0.070,
-    browOffsetX: 0.305,
-    browOffsetY: 0.360,
+    irisRadius: 0.153,  // Smaller iris for refined appearance
+    // Soft, elegant brows
+    browWidth: 0.27,
+    browHeight: 0.052,
+    browDepth: 0.066,
+    browOffsetX: 0.308,
+    browOffsetY: 0.368,
     browOffsetZ: 0.810,
-    browRotY: 0.15,
+    browRotY: 0.14,
     browRotZInner: 0.05,
-    // Small, round nose (not assertive)
-    noseRadius: 0.058,
-    noseOffsetY: -0.065,
-    noseZ: 0.943,
-    noseScaleX: 0.90,
-    noseScaleY: 0.93,
-    noseScaleZ: 0.76,
-    earRadius: 0.12,
-    earOffsetX: 0.90,
-    // Soft, subtle mouth with gentle smile
-    mouthOffsetY: -0.330,
-    mouthOffsetZ: 0.828,
-    lipTorusRadius: 0.118,
-    lipTubeRadius: 0.030,
-    // Soft, approachable cheeks
-    cheekRadius: 0.22,
-    cheekOffsetX: 0.48,
-    cheekOffsetY: -0.11,
-    cheekOffsetZ: 0.64,
-    // Bright warm yellow skin (Memoji emoji-style)
+    // Small, delicate nose
+    noseRadius: 0.056,
+    noseOffsetY: -0.062,
+    noseZ: 0.941,
+    noseScaleX: 0.88,
+    noseScaleY: 0.90,
+    noseScaleZ: 0.73,
+    earRadius: 0.11,
+    earOffsetX: 0.89,
+    // Soft, refined mouth - more visible than before
+    mouthOffsetY: -0.327,
+    mouthOffsetZ: 0.831,
+    lipTorusRadius: 0.127,  // Larger for better visibility
+    lipTubeRadius: 0.034,
+    // Elegant cheeks - dimensional but not cartoonish
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.46,
+    cheekOffsetY: -0.09,
+    cheekOffsetZ: 0.66,
+    // Bright warm yellow skin (Memoji style)
     skinColor: 0xf4d896,
     cheekColor: 0xff9985,
     // Dark chocolate brown hair
