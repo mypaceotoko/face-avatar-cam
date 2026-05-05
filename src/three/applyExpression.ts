@@ -52,21 +52,30 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   const upperUp = m.upperRaise;
   const lowerDown = m.lowerDrop;
 
+  // Direct read of the emotion vector so we can drive shape-level overlays
+  // (▲ sad eyebrows, ▽ anger furrow, droopy mouth, jaw-clench) without going
+  // through the per-channel finals. These are clamped 0..1 already.
+  const sadE = e.emotions.sad;
+  const angryE = e.emotions.angry;
+  const confusedE = e.emotions.confused;
+
   // Outer lips: WIDE on smile, NARROW on pucker, TALL on open.
-  // Y factor raised from 1.6 to 2.2 so syllables drive a much more visible
-  // jaw drop — the primary cue for lip-sync readability.
+  // Anger compresses horizontally (jaw clench / lips pressed together).
+  // Frown rotates the corners further down — the boost from 0.45 → 0.65 makes
+  // a sad mouth visibly droop instead of just flattening.
   rig.parts.lipsOuter.scale.set(
     d.lipsOuterScale.x *
-      (1 + 0.60 * smile + 0.45 * m.stretch - 0.55 * pucker - 0.25 * funnel),
+      (1 + 0.60 * smile + 0.45 * m.stretch - 0.55 * pucker - 0.25 * funnel) *
+      (1 - 0.18 * angryE),
     d.lipsOuterScale.y *
-      (1 + 2.2 * open + 0.55 * upperUp + 0.55 * lowerDown) *
+      (1 + 2.2 * open + 0.55 * upperUp + 0.55 * lowerDown + 0.20 * sadE) *
       (1 - 0.3 * close),
     d.lipsOuterScale.z * (1 + 0.50 * pucker + 0.28 * funnel - 0.15 * smile),
   );
   rig.parts.lipsOuter.rotation.set(
-    d.lipsOuterRotation.x - smile * 0.4 + frown * 0.45 - open * 0.12,
+    d.lipsOuterRotation.x - smile * 0.4 + frown * 0.65 - open * 0.12 + sadE * 0.12,
     d.lipsOuterRotation.y,
-    d.lipsOuterRotation.z + (smileL - smileR) * 0.18 + m.shiftX * 0.08,
+    d.lipsOuterRotation.z + (smileL - smileR) * 0.18 + m.shiftX * 0.08 + confusedE * 0.10,
   );
 
   // Mouth cavity: raised factor (2.4→3.2) so the dark interior opens
@@ -77,10 +86,17 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
     d.mouthCavityScale.z * (1 + 0.3 * pucker + 0.15 * funnel),
   );
 
-  // Mouth group: corners up on smile, down on frown, jaw drops whole group.
+  // Mouth group: corners up on smile, drop hard on frown/sad/anger, jaw drops
+  // whole group on open. Frown drop boosted 0.07 → 0.14 + extra direct sadE
+  // bias so a 泣き顔 mouth sinks visibly toward the chin.
   rig.parts.mouthGroup.position.set(
     d.mouthGroup.position.x + m.shiftX * 0.06,
-    d.mouthGroup.position.y + 0.09 * smile - 0.07 * frown - 0.08 * open,
+    d.mouthGroup.position.y +
+      0.09 * smile -
+      0.14 * frown -
+      0.08 * open -
+      0.05 * sadE -
+      0.03 * angryE,
     d.mouthGroup.position.z + 0.012 * pucker,
   );
 
@@ -172,24 +188,62 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   rig.parts.irisRight.rotation.set(pitch, yaw, 0);
 
   // ============= Brows =====================================================
-  // Brow magnitudes were ~0.05 unit; we go up to ~0.13 unit total swing for a
-  // visible reaction at small sizes.
+  // Two readability shape overlays:
+  //   sadShape  → ▲ inner-up + outer-down (sad / 困り / 泣き)
+  //   angerShape → ▽ inner-down + outer-up + brows pinched together (怒)
+  // They ride on top of the per-channel signals so the user's own performance
+  // still shows through, but the dominant emotion guarantees a clear silhouette.
+  const sadShape = clamp(sadE * 1.1 + br.innerUp * 0.4 + confusedE * 0.55, 0, 1);
+  const angerShape = clamp(angryE * 1.1 + (br.downL + br.downR) * 0.45, 0, 1);
+
+  // Vertical position: anger drops the whole brow toward the eye; sad/innerUp
+  // lifts the inner end (handled by rotation) but also drops the outer slightly.
+  const browSadDrop = -sadShape * 0.025;
+  const browAngerDrop = -angerShape * 0.030;
   const browLY =
-    br.raiseL * 0.11 + br.innerUp * 0.09 - br.downL * 0.10 - frown * 0.02 + ey.wideL * 0.04;
+    br.raiseL * 0.13 +
+    br.innerUp * 0.10 -
+    br.downL * 0.12 -
+    frown * 0.02 +
+    ey.wideL * 0.05 +
+    browSadDrop +
+    browAngerDrop;
   const browRY =
-    br.raiseR * 0.11 + br.innerUp * 0.09 - br.downR * 0.10 - frown * 0.02 + ey.wideR * 0.04;
-  // Inner brow X: anger pinches in, sad/innerUp flares out.
-  const browLX = -br.downL * 0.05 + br.innerUp * -0.025;
-  const browRX = br.downR * 0.05 + br.innerUp * 0.025;
+    br.raiseR * 0.13 +
+    br.innerUp * 0.10 -
+    br.downR * 0.12 -
+    frown * 0.02 +
+    ey.wideR * 0.05 +
+    browSadDrop +
+    browAngerDrop;
+  // Inner brow X pinch on anger: left brow's center moves to the right
+  // (positive), right brow's center moves to the left (negative). Slight
+  // outward flare on sad keeps the ▲ silhouette readable.
+  const browLX =
+    -br.downL * 0.03 - br.innerUp * 0.020 + angerShape * 0.045 - sadShape * 0.015;
+  const browRX =
+    br.downR * 0.03 + br.innerUp * 0.020 - angerShape * 0.045 + sadShape * 0.015;
   rig.parts.browLeft.position.set(
     d.browLeft.position.x + browLX,
     d.browLeft.position.y + browLY,
     d.browLeft.position.z,
   );
+  // Rotation Z drives the iconic brow shape:
+  //   +Z on left  = inner end UP   = sad ▲ /
+  //   -Z on left  = inner end DOWN = anger ▽ \
+  // (Right brow uses opposite signs.)
+  // Confused contributes asymmetry: left a bit more ▲ than right, so one side
+  // arches up like 困り顔.
   rig.parts.browLeft.rotation.set(
     d.browLeft.rotation.x,
     d.browLeft.rotation.y,
-    d.browLeft.rotation.z + br.raiseL * 0.32 - br.downL * 0.55 + br.innerUp * 0.22,
+    d.browLeft.rotation.z +
+      br.raiseL * 0.40 -
+      br.downL * 0.85 +
+      br.innerUp * 0.40 +
+      sadShape * 0.45 -
+      angerShape * 0.30 +
+      confusedE * 0.18,
   );
   rig.parts.browRight.position.set(
     d.browRight.position.x + browRX,
@@ -199,7 +253,13 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   rig.parts.browRight.rotation.set(
     d.browRight.rotation.x,
     d.browRight.rotation.y,
-    d.browRight.rotation.z - br.raiseR * 0.32 + br.downR * 0.55 - br.innerUp * 0.22,
+    d.browRight.rotation.z -
+      br.raiseR * 0.40 +
+      br.downR * 0.85 -
+      br.innerUp * 0.40 -
+      sadShape * 0.45 +
+      angerShape * 0.30 -
+      confusedE * 0.06,
   );
 
   // ============= Cheeks ====================================================
@@ -230,13 +290,35 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   (rig.materials.cheek as THREE.MeshStandardMaterial).opacity = clamp(cheekVis * 0.55, 0, 0.55);
 
   // ============= Nose / sneer ============================================
-  // Inferred from emotion: anger scrunches; surprise leaves it neutral.
-  const sneer = clamp(br.downL + br.downR - br.raiseL - br.raiseR, 0, 1) * 0.5;
-  rig.parts.nose.scale.set(
-    1.0 * (1 - sneer * 0.06),
-    0.95 * (1 - sneer * 0.10),
-    0.85 * (1 + sneer * 0.05),
+  // Anger scrunches the nose more visibly (+ the dominant emotion contributes
+  // directly so a classified 怒 always shows the scrunch, not just when both
+  // brow-down channels happen to be high).
+  const sneer = clamp(
+    (br.downL + br.downR - br.raiseL - br.raiseR) * 0.5 + angerShape * 0.6,
+    0,
+    1,
   );
+  rig.parts.nose.scale.set(
+    1.0 * (1 - sneer * 0.10),
+    0.95 * (1 - sneer * 0.14),
+    0.85 * (1 + sneer * 0.08),
+  );
+
+  // ============= Tears (sad / 泣き顔) ====================================
+  // Two glossy droplets on the lower outer eye corners. Threshold is high so
+  // they only appear when the user is clearly committing to a sad / crying
+  // expression — small pouts shouldn't summon waterworks.
+  const tearOpacity = clamp(sadE * 1.6 - 0.55, 0, 0.85);
+  const tearMatL = rig.parts.tearLeft.material as THREE.MeshStandardMaterial;
+  const tearMatR = rig.parts.tearRight.material as THREE.MeshStandardMaterial;
+  tearMatL.opacity = tearOpacity;
+  tearMatR.opacity = tearOpacity;
+  rig.parts.tearLeft.visible = tearOpacity > 0.02;
+  rig.parts.tearRight.visible = tearOpacity > 0.02;
+  // Slide the droplet down the cheek as the sadness deepens (animated tear).
+  const tearSlide = sadE * 0.045;
+  rig.parts.tearLeft.position.y = d.tearLeftPosition.y - tearSlide;
+  rig.parts.tearRight.position.y = d.tearRightPosition.y - tearSlide;
 }
 
 function clamp(v: number, lo: number, hi: number) {
