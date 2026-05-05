@@ -632,6 +632,118 @@ function buildHair(
       hair.add(m);
     }
 
+  } else if (cfg.hairStyle === 'youngmancool') {
+    // Fresh young-man cut — tapered short sides + layered top with a confident
+    // up-and-back sweep ending in a soft side-fringe over the forehead. Built
+    // from a low base cap, several stacked rows of "comb-rolls" (capsules) for
+    // the volume on top, and tight short side wisps that don't bury the ears.
+    // Designed to read as "K-actor / Japanese youth model" rather than spiky
+    // anime — clean, polished, glossy.
+
+    // Base cap — sits a bit further down at the back than 'boyswept' so the
+    // taper reads, but shallow theta so the forehead stays clean.
+    const capGeom = new THREE.SphereGeometry(0.95, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.46);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.05, 0);
+    hair.add(cap);
+
+    // Layered top: thin capsules stacked into rows so each one reads as a
+    // styled hair lock with a clear specular streak from the env map.
+    const lockGeom = new THREE.CapsuleGeometry(0.085, 0.40, 14, 28);
+    xGeoms.push(lockGeom);
+
+    // [posX, posY, posZ, rotX, rotY, rotZ, sx, sy, sz]
+    const LOCKS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      // ----- Front fringe row: side-swept to the subject's right (-x).
+      // Slight forward tip so the strands fall over the brow without burying it.
+      [-0.50, 0.86, 0.66,  0.55,  0.55,  0.55,  0.95, 1.05, 1.00],
+      [-0.25, 0.95, 0.72,  0.65,  0.30,  0.40,  1.05, 1.15, 1.05],
+      [ 0.00, 0.99, 0.74,  0.72,  0.05,  0.20,  1.10, 1.20, 1.05],
+      [ 0.25, 0.98, 0.70,  0.75, -0.20,  0.05,  1.05, 1.15, 1.00],
+      [ 0.50, 0.92, 0.62,  0.72, -0.45, -0.12,  0.95, 1.05, 0.95],
+
+      // ----- Mid-crown row: rises tall, swept up and slightly back.
+      // This is the "volume on top" silhouette of the cut.
+      [-0.42, 1.04, 0.36,  0.20,  0.45,  0.30,  0.95, 1.10, 1.00],
+      [-0.18, 1.10, 0.42,  0.18,  0.18,  0.10,  1.05, 1.20, 1.05],
+      [ 0.05, 1.12, 0.42,  0.20, -0.05,  0.00,  1.10, 1.25, 1.05],
+      [ 0.28, 1.10, 0.38,  0.18, -0.28, -0.08,  1.05, 1.20, 1.00],
+      [ 0.50, 1.04, 0.30,  0.18, -0.50, -0.28,  0.95, 1.10, 0.95],
+
+      // ----- Crown back row: gently flowing back over the skull.
+      [-0.30, 1.06, 0.05, -0.20,  0.30,  0.18,  0.95, 1.05, 0.95],
+      [ 0.00, 1.10, 0.05, -0.22,  0.00,  0.00,  1.05, 1.15, 1.00],
+      [ 0.30, 1.06, 0.05, -0.20, -0.30, -0.18,  0.95, 1.05, 0.95],
+
+      // ----- Nape transition: short, lying close to the head.
+      [-0.20, 0.86, -0.40, -0.55,  0.20,  0.10,  0.85, 0.85, 0.85],
+      [ 0.00, 0.90, -0.45, -0.58,  0.00,  0.00,  0.95, 0.90, 0.90],
+      [ 0.20, 0.86, -0.40, -0.55, -0.20, -0.10,  0.85, 0.85, 0.85],
+    ];
+    for (const r of LOCKS) {
+      const m = new THREE.Mesh(lockGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // Tapered sides — short flat layers above the ears, kept clear of the
+    // cheek so the face shape still reads.
+    const sideGeom = new THREE.SphereGeometry(0.36, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(sideGeom);
+    for (const side of [-1, 1] as const) {
+      const s = new THREE.Mesh(sideGeom, materials.hair);
+      s.position.set(side * 0.66, 0.32, 0.06);
+      s.scale.set(0.62, 0.95, 0.85);
+      s.rotation.set(0, side * 0.18, side * -0.08);
+      hair.add(s);
+    }
+
+    // Side-burn hint: tiny strip flowing down in front of the ear to suggest a
+    // real haircut rather than a helmet.
+    const burnGeom = new THREE.CapsuleGeometry(0.025, 0.10, 6, 10);
+    xGeoms.push(burnGeom);
+    for (const side of [-1, 1] as const) {
+      const b = new THREE.Mesh(burnGeom, materials.hair);
+      b.position.set(side * 0.78, 0.05, 0.10);
+      b.rotation.set(0, 0, side * 0.10);
+      hair.add(b);
+    }
+
+    // Premium subtle highlights: a few thin warm-brown streaks running through
+    // the top — picks up specular as the head turns and reads as healthy hair.
+    if (cfg.hasHairHighlights) {
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0x6e4a32), 0.42);
+      const hlMat = new THREE.MeshStandardMaterial({
+        color: hlColor,
+        roughness: 0.34,
+        metalness: 0.06,
+        emissive: hlColor.clone().multiplyScalar(0.06),
+        emissiveIntensity: 0.4,
+      });
+      xMats.push(hlMat);
+
+      const hlGeom = new THREE.CapsuleGeometry(0.018, 0.30, 6, 14);
+      xGeoms.push(hlGeom);
+      const HL: Array<[number, number, number, number, number, number]> = [
+        // Streaks along the upper-front locks
+        [-0.18, 1.02, 0.70,  0.65,  0.18,  0.10],
+        [ 0.06, 1.04, 0.72,  0.70,  0.00,  0.04],
+        [ 0.30, 1.02, 0.66,  0.70, -0.20, -0.02],
+        // Crown streaks
+        [-0.10, 1.14, 0.40,  0.20,  0.05,  0.04],
+        [ 0.16, 1.14, 0.40,  0.20, -0.05, -0.04],
+      ];
+      for (const h of HL) {
+        const m = new THREE.Mesh(hlGeom, hlMat);
+        m.position.set(h[0], h[1], h[2]);
+        m.rotation.set(h[3], h[4], h[5]);
+        hair.add(m);
+      }
+    }
+
   } else if (cfg.hairStyle === 'girllong') {
     // Memoji-style long wavy hair - refined, elegant, flowing to one side.
     // Key: minimal top coverage so forehead/face is clearly visible.
