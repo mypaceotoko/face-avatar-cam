@@ -29,6 +29,8 @@ export type AvatarRig = {
     eyeRight: THREE.Group;
     cheekLeft: THREE.Mesh;
     cheekRight: THREE.Mesh;
+    tearLeft: THREE.Mesh;
+    tearRight: THREE.Mesh;
     hair: THREE.Group;
   };
   defaults: {
@@ -52,6 +54,8 @@ export type AvatarRig = {
     eyeRightScale: THREE.Vector3;
     cheekLeft: { position: THREE.Vector3; scale: THREE.Vector3 };
     cheekRight: { position: THREE.Vector3; scale: THREE.Vector3 };
+    tearLeftPosition: THREE.Vector3;
+    tearRightPosition: THREE.Vector3;
   };
   materials: AvatarMaterials;
   dispose: () => void;
@@ -313,6 +317,44 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   cheekRight.scale.set(0.85, 0.7, 0.6);
   head.add(cheekRight);
 
+  // ---- Tears (hidden by default; faded in by sad emotion) -------------------
+  // Two glossy water droplets sit at the lower-outer corner of each eye, just
+  // proud of the cheek. They start invisible (opacity 0) and applyExpression
+  // fades them in for 泣き顔. Using a dedicated material per tear so the
+  // opacity drives don't fight each other or the rest of the rig.
+  const tearGeom = new THREE.SphereGeometry(0.040, 32, 32);
+  xGeoms.push(tearGeom);
+  function makeTearMat() {
+    const m = new THREE.MeshStandardMaterial({
+      color: 0xc6e6ff,
+      transparent: true,
+      opacity: 0.0,
+      roughness: 0.04,
+      metalness: 0.18,
+      emissive: new THREE.Color(0x88c0ff),
+      emissiveIntensity: 0.45,
+      envMapIntensity: 1.4,
+    });
+    xMats.push(m);
+    return m;
+  }
+  // Position: under the outer half of each eye, slightly forward so it sits
+  // visibly on the cheek surface rather than buried in the eye socket.
+  const tearY = eyeY - sceleraR * 1.05;
+  const tearZ = eyeZ + sceleraR * 0.55;
+  const tearLeft = new THREE.Mesh(tearGeom, makeTearMat());
+  tearLeft.position.set(-eyeOffsetX * 1.05, tearY, tearZ);
+  // Stretched vertically to read as a falling droplet, narrowed in Z so it
+  // hugs the cheek.
+  tearLeft.scale.set(0.85, 1.55, 0.65);
+  tearLeft.visible = false;
+  head.add(tearLeft);
+  const tearRight = new THREE.Mesh(tearGeom, makeTearMat());
+  tearRight.position.set(eyeOffsetX * 1.05, tearY, tearZ);
+  tearRight.scale.set(0.85, 1.55, 0.65);
+  tearRight.visible = false;
+  head.add(tearRight);
+
   // ---- Beard (uncle / grandpa) ----------------------------------------------
   if (cfg.hasBeard) {
     buildBeard(head, cfg, xGeoms, xMats);
@@ -389,6 +431,8 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     eyeRightScale: right.g.scale.clone(),
     cheekLeft: { position: cheekLeft.position.clone(), scale: cheekLeft.scale.clone() },
     cheekRight: { position: cheekRight.position.clone(), scale: cheekRight.scale.clone() },
+    tearLeftPosition: tearLeft.position.clone(),
+    tearRightPosition: tearRight.position.clone(),
   };
 
   const dispose = () => {
@@ -412,6 +456,8 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   const SHADOW_SKIP = new Set<THREE.Object3D>([
     cheekLeft,
     cheekRight,
+    tearLeft,
+    tearRight,
     teeth,
     mouthCavity,
     tongue,
@@ -438,7 +484,7 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
       browLeft, browRight,
       irisLeft: left.irisRoot, irisRight: right.irisRoot,
       eyeLeft: left.g, eyeRight: right.g,
-      cheekLeft, cheekRight, hair,
+      cheekLeft, cheekRight, tearLeft, tearRight, hair,
     },
     defaults,
     materials,

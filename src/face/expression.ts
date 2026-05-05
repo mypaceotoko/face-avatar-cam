@@ -144,15 +144,28 @@ function classifyEmotions(
     (ampGeneric(bs.mouthStretchLeft) + ampGeneric(bs.mouthStretchRight)) * 0.5;
   const sneer = (ampGeneric(bs.noseSneerLeft) + ampGeneric(bs.noseSneerRight)) * 0.5;
 
-  const happy = clamp01(smile * 0.85 + cheek * 0.4 + browOuter * 0.15);
-  const laughing = clamp01(smile * mouthOpen * 1.6 + cheek * 0.3);
+  // Tuned for *readability*: every emotion needs to score high enough to
+  // dominate the mix when the user clearly performs it. Coefficients here are
+  // bumped (vs. the previous calmer set) so the corresponding overlay can move
+  // the geometry visibly even when MediaPipe is undershooting the channel.
+  const happy = clamp01(smile * 0.95 + cheek * 0.5 + browOuter * 0.20);
+  const laughing = clamp01(smile * mouthOpen * 1.8 + cheek * 0.35);
   const surprised = clamp01(mouthOpen * 0.55 + wide * 0.7 + browInner * 0.45 - smile * 0.4);
-  const angry = clamp01(browDown * 0.85 + sneer * 0.3 + stretch * 0.25 - smile * 0.4);
-  const sad = clamp01(frown * 0.7 + browInner * 0.55 - smile * 0.5);
+  // Anger: brow-down is the core cue; sneer + stretch reinforce. Big boost
+  // here so a real frown classifies as anger instead of bleeding into "sad".
+  const angry = clamp01(browDown * 1.10 + sneer * 0.40 + stretch * 0.30 - smile * 0.4);
+  // Sad: frown corners + inner-brow-up (the universal ▲ shape). Boosted so
+  // a soft pout reads as sad instead of neutral.
+  const sad = clamp01(frown * 0.95 + browInner * 0.65 - smile * 0.5);
   const browAsym = Math.abs(
     ampBrow(bs.browOuterUpLeft) - ampBrow(bs.browOuterUpRight),
   );
-  const confused = clamp01(browAsym * 1.4 + browInner * 0.3 * (1 - smile));
+  // Confused / 困り顔: asymmetric brows OR slight inner-up + slight stretch +
+  // not-smiling. Sneer/stretch contribution lets a worried mouth (corners
+  // pulled in/back without the inner-brow-up) still classify as confused.
+  const confused = clamp01(
+    browAsym * 1.8 + browInner * 0.40 * (1 - smile) + (sneer + stretch) * 0.15,
+  );
 
   const sum = happy + laughing + surprised + angry + sad + confused;
   const out = {} as EmotionWeights;
@@ -310,31 +323,41 @@ export class ExpressionEngine {
     const dom = dominantEmotion(emotions);
 
     // -------- Apply emotion overlay BIAS to channels --------------------
-    // (Expression overlays are added on top of the user's measured motion.)
+    // Overlays are ADDED to the user's measured motion. Coefficients are tuned
+    // so a confidently classified emotion drives the geometry far enough to
+    // read on a phone screen even when the user under-performs.
     const eHappy = emotions.happy + emotions.laughing * 0.7;
     const eLaugh = emotions.laughing;
     const eSurp = emotions.surprised;
     const eAngry = emotions.angry;
     const eSad = emotions.sad;
+    const eConf = emotions.confused;
 
-    const finalSmile = clamp01(smile + eHappy * 0.35);
-    const finalSmileL = clamp01(smileL + eHappy * 0.35);
-    const finalSmileR = clamp01(smileR + eHappy * 0.35);
-    const finalFrown = clamp01(frown + eSad * 0.5);
-    const finalOpen = clamp01(open + eLaugh * 0.25 + eSurp * 0.2);
-    const finalSquintL = clamp01(squintL + eHappy * 0.35 + eAngry * 0.2);
-    const finalSquintR = clamp01(squintR + eHappy * 0.35 + eAngry * 0.2);
-    const finalWideL = clamp01(wideL + eSurp * 0.5);
-    const finalWideR = clamp01(wideR + eSurp * 0.5);
-    const finalRaiseL = clamp01(raiseL + eSurp * 0.4 + eHappy * 0.1);
-    const finalRaiseR = clamp01(raiseR + eSurp * 0.4 + eHappy * 0.1);
-    const finalDownL = clamp01(downL + eAngry * 0.45);
-    const finalDownR = clamp01(downR + eAngry * 0.45);
-    const finalInnerUp = clamp01(innerUp + eSad * 0.55 + eSurp * 0.3);
-    const finalCheekL = clamp01(cheekRaiseL + eHappy * 0.4);
-    const finalCheekR = clamp01(cheekRaiseR + eHappy * 0.4);
-    const finalCornerUp = clamp01(cornerUp + eHappy * 0.4);
-    const finalCornerDown = clamp01(cornerDown + eSad * 0.4 + eAngry * 0.2);
+    const finalSmile = clamp01(smile + eHappy * 0.55);
+    const finalSmileL = clamp01(smileL + eHappy * 0.55);
+    const finalSmileR = clamp01(smileR + eHappy * 0.55);
+    // Frown gets a much stronger sad bias + a touch from angry/confused so
+    // sad/troubled mouths actually droop on the avatar.
+    const finalFrown = clamp01(frown + eSad * 0.80 + eAngry * 0.20 + eConf * 0.20);
+    const finalOpen = clamp01(open + eLaugh * 0.28 + eSurp * 0.22);
+    // Anger and happy both squint the eyes; this sells the "怒" furrow.
+    const finalSquintL = clamp01(squintL + eHappy * 0.40 + eAngry * 0.40);
+    const finalSquintR = clamp01(squintR + eHappy * 0.40 + eAngry * 0.40);
+    const finalWideL = clamp01(wideL + eSurp * 0.55);
+    const finalWideR = clamp01(wideR + eSurp * 0.55);
+    const finalRaiseL = clamp01(raiseL + eSurp * 0.45 + eHappy * 0.10);
+    const finalRaiseR = clamp01(raiseR + eSurp * 0.45 + eHappy * 0.10);
+    // Brow-down: anger drives it hard; this is the dominant readable cue for 怒.
+    const finalDownL = clamp01(downL + eAngry * 0.80);
+    const finalDownR = clamp01(downR + eAngry * 0.80);
+    // Inner-brow-up: the ▲ "sad/troubled" eyebrows. Boost on sad and confused
+    // so 困り顔 reads instantly. Surprise also lifts inner brows.
+    const finalInnerUp = clamp01(innerUp + eSad * 0.85 + eSurp * 0.30 + eConf * 0.65);
+    const finalCheekL = clamp01(cheekRaiseL + eHappy * 0.55);
+    const finalCheekR = clamp01(cheekRaiseR + eHappy * 0.55);
+    const finalCornerUp = clamp01(cornerUp + eHappy * 0.55);
+    // Corner-down: sad pulls hard, anger pulls some, confused a touch.
+    const finalCornerDown = clamp01(cornerDown + eSad * 0.70 + eAngry * 0.30 + eConf * 0.20);
 
     // Inject random idle blink on top of the measured one. Take whichever is
     // bigger so a real blink wins over the timer-driven one.
