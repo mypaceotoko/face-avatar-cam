@@ -1,4 +1,11 @@
-export type CharacterType = 'child' | 'boy' | 'girl' | 'woman' | 'uncle' | 'grandpa';
+export type CharacterType =
+  | 'child'
+  | 'boy'
+  | 'youngman'
+  | 'girl'
+  | 'woman'
+  | 'uncle'
+  | 'grandpa';
 
 export interface CharacterConfig {
   labelJa: string;
@@ -49,7 +56,14 @@ export interface CharacterConfig {
   lipColor: number;
   browColor: number;
   // Hair style
-  hairStyle: 'child' | 'boyswept' | 'girllong' | 'woman' | 'man' | 'grandpa';
+  hairStyle:
+    | 'child'
+    | 'boyswept'
+    | 'youngmancool'
+    | 'girllong'
+    | 'woman'
+    | 'man'
+    | 'grandpa';
   // Special decorative features
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
@@ -202,6 +216,77 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasHairBangs: false,
     hasHairHighlights: false,
     hasEyeAccents: false,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+  },
+
+  // Fresh, cool young man (青年). The "爽やかなカッコいい" archetype: clean
+  // tapered jawline, sharp groomed brows, bright clear eyes with a glossy
+  // catchlight, a defined nose, and a sleek swept-up dark hairstyle. Skin is a
+  // healthy peach-ivory — warmer and brighter than the uncle's tan but more
+  // mature than the boy's chubby ivory. No blush (cool, composed look) but
+  // hair highlights and eye accents stay on for premium Memoji-grade detail.
+  youngman: {
+    labelJa: '青年',
+    // Slightly elongated head — a touch of jaw definition without making it
+    // angular. Read as "young adult", not "kid".
+    headScaleX: 0.99,
+    headScaleY: 1.10,
+    headScaleZ: 0.99,
+    // Large but sharper-feeling eyes (smaller iris than child for a focused look)
+    eyeRadius: 0.225,
+    eyeOffsetX: 0.305,
+    eyeOffsetY: 0.075,
+    eyeZ: 0.770,
+    irisRadius: 0.150,
+    // Bold, well-groomed straight brows — defining feature of the look
+    browWidth: 0.32,
+    browHeight: 0.060,
+    browDepth: 0.075,
+    browOffsetX: 0.305,
+    browOffsetY: 0.355,
+    browOffsetZ: 0.810,
+    browRotY: 0.18,
+    browRotZInner: 0.025,
+    // Refined straight nose — slightly more defined than boy
+    noseRadius: 0.060,
+    noseOffsetY: -0.080,
+    noseZ: 0.948,
+    noseScaleX: 0.86,
+    noseScaleY: 1.00,
+    noseScaleZ: 0.82,
+    earRadius: 0.12,
+    earOffsetX: 0.90,
+    // Cool, calm, slightly straighter mouth
+    mouthOffsetY: -0.345,
+    mouthOffsetZ: 0.825,
+    lipTorusRadius: 0.130,
+    lipTubeRadius: 0.034,
+    // Lean cheekbones — subtle dimensionality, not chubby
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.48,
+    cheekOffsetY: -0.13,
+    cheekOffsetZ: 0.64,
+    // Healthy peach-ivory — warm, fresh, slightly tan
+    skinColor: 0xf3c39a,
+    cheekColor: 0xe89178,
+    // Cool jet-black with a hint of brown for depth (avoids dead flat black)
+    hairColor: 0x1c1410,
+    irisColor: 0x3c2516,    // deep warm chocolate
+    lipColor: 0xc7766a,
+    browColor: 0x1c1410,
+    hairStyle: 'youngmancool',
+    hasLashes: false,
+    hasBlush: false,         // cool/calm look — no rouge
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: true, // subtle warm strand highlights for premium hair
+    hasEyeAccents: true,     // larger catchlight + soft inner glow ring
     hasBeard: false,
     beardColor: 0x1a0d06,
     beardStyle: 'none',
@@ -455,4 +540,12 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   },
 };
 
-export const CHARACTER_ORDER: CharacterType[] = ['child', 'boy', 'girl', 'woman', 'uncle', 'grandpa'];
+export const CHARACTER_ORDER: CharacterType[] = [
+  'child',
+  'boy',
+  'youngman',
+  'girl',
+  'woman',
+  'uncle',
+  'grandpa',
+];
