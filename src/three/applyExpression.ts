@@ -55,9 +55,12 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   // Direct read of the emotion vector so we can drive shape-level overlays
   // (▲ sad eyebrows, ▽ anger furrow, droopy mouth, jaw-clench) without going
   // through the per-channel finals. These are clamped 0..1 already.
-  const sadE = e.emotions.sad;
-  const angryE = e.emotions.angry;
-  const confusedE = e.emotions.confused;
+  // Gate each emotion through a confidence threshold so low-conviction
+  // classifications (jitter, MP noise) don't perma-tilt the brows. Below the
+  // gate the emotion contributes nothing to the rig; above it, it ramps to 1.
+  const sadE = emoGate(e.emotions.sad);
+  const angryE = emoGate(e.emotions.angry);
+  const confusedE = emoGate(e.emotions.confused);
 
   // Outer lips: WIDE on smile, NARROW on pucker, TALL on open.
   // Anger compresses horizontally (jaw clench / lips pressed together).
@@ -193,8 +196,10 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   //   angerShape → ▽ inner-down + outer-up + brows pinched together (怒)
   // They ride on top of the per-channel signals so the user's own performance
   // still shows through, but the dominant emotion guarantees a clear silhouette.
-  const sadShape = clamp(sadE * 1.1 + br.innerUp * 0.4 + confusedE * 0.55, 0, 1);
-  const angerShape = clamp(angryE * 1.1 + (br.downL + br.downR) * 0.45, 0, 1);
+  // Important: only emotion-gated values feed in here, so jitter at neutral
+  // can't synthesise a phantom ▲.
+  const sadShape = clamp(sadE + br.innerUp * 0.30 + confusedE * 0.40, 0, 1);
+  const angerShape = clamp(angryE + (br.downL + br.downR) * 0.35, 0, 1);
 
   // Vertical position: anger drops the whole brow toward the eye; sad/innerUp
   // lifts the inner end (handled by rotation) but also drops the outer slightly.
@@ -232,18 +237,18 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
   //   +Z on left  = inner end UP   = sad ▲ /
   //   -Z on left  = inner end DOWN = anger ▽ \
   // (Right brow uses opposite signs.)
-  // Confused contributes asymmetry: left a bit more ▲ than right, so one side
-  // arches up like 困り顔.
+  // Coefficients here are intentionally moderate: the user's own brow channels
+  // (br.innerUp / br.downL,R / br.raiseL,R) carry the real-time motion, the
+  // emotion shape overlays only top them off when an emotion clearly fires.
   rig.parts.browLeft.rotation.set(
     d.browLeft.rotation.x,
     d.browLeft.rotation.y,
     d.browLeft.rotation.z +
-      br.raiseL * 0.40 -
-      br.downL * 0.85 +
-      br.innerUp * 0.40 +
-      sadShape * 0.45 -
-      angerShape * 0.30 +
-      confusedE * 0.18,
+      br.raiseL * 0.35 -
+      br.downL * 0.70 +
+      br.innerUp * 0.28 +
+      sadShape * 0.30 -
+      angerShape * 0.25,
   );
   rig.parts.browRight.position.set(
     d.browRight.position.x + browRX,
@@ -254,12 +259,11 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
     d.browRight.rotation.x,
     d.browRight.rotation.y,
     d.browRight.rotation.z -
-      br.raiseR * 0.40 +
-      br.downR * 0.85 -
-      br.innerUp * 0.40 -
-      sadShape * 0.45 +
-      angerShape * 0.30 -
-      confusedE * 0.06,
+      br.raiseR * 0.35 +
+      br.downR * 0.70 -
+      br.innerUp * 0.28 -
+      sadShape * 0.30 +
+      angerShape * 0.25,
   );
 
   // ============= Cheeks ====================================================
@@ -323,4 +327,13 @@ export function applyExpression(rig: AvatarRig, e: ExpressionState) {
 
 function clamp(v: number, lo: number, hi: number) {
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+// Confidence gate for emotion overlays. Below `thresh` the emotion contributes
+// nothing — this keeps low-conviction classifications (jitter, MP noise) from
+// leaking into the rig and producing a phantom ▲/▽ at neutral faces. Above
+// `thresh` the value ramps from 0 → 1 across the remaining range.
+function emoGate(v: number, thresh = 0.30): number {
+  if (v <= thresh) return 0;
+  return (v - thresh) / (1 - thresh);
 }
