@@ -47,7 +47,13 @@ function ampSmile(v: number): number {
   return amp(v, 2.4, 0.05);
 }
 function ampBrow(v: number): number {
-  return amp(v, 2.3, 0.05);
+  // Higher knee + lower gain than mouth channels: MediaPipe's brow blendshapes
+  // have a non-trivial resting-face noise floor (especially browInnerUp) for
+  // many users, and even small leakage gets multiplied by the rig's rotation
+  // coefficients into a permanently visible ▲ tilt. With knee 0.12 the noise
+  // is fully zero'd before it reaches the rig, while a real raise / inner-up
+  // (MP value ~0.4–0.6) still produces a strong response.
+  return amp(v, 1.9, 0.12);
 }
 function ampBlink(v: number): number {
   // Blink mostly saturates fast; we still gain it slightly so partial closes
