@@ -296,14 +296,20 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   }
 
   // ---- Eyebrows -------------------------------------------------------------
+  // Baseline rotation Z = 0 (FLAT brows at neutral). Previously the configs
+  // pre-tilted the inner end UP via `browRotZInner`, which left every avatar
+  // permanently wearing the "八の字" sad / troubled silhouette before any
+  // expression was applied. The ▲ shape now belongs exclusively to
+  // applyExpression's sadShape / innerUp / confused overlays, so neutral reads
+  // as neutral.
   const browGeom = new THREE.BoxGeometry(cfg.browWidth, cfg.browHeight, cfg.browDepth);
   const browLeft = new THREE.Mesh(browGeom, materials.brow);
   browLeft.position.set(-cfg.browOffsetX, cfg.browOffsetY, cfg.browOffsetZ);
-  browLeft.rotation.set(0, -cfg.browRotY, cfg.browRotZInner);
+  browLeft.rotation.set(0, -cfg.browRotY, 0);
   head.add(browLeft);
   const browRight = new THREE.Mesh(browGeom, materials.brow);
   browRight.position.set(cfg.browOffsetX, cfg.browOffsetY, cfg.browOffsetZ);
-  browRight.rotation.set(0, cfg.browRotY, -cfg.browRotZInner);
+  browRight.rotation.set(0, cfg.browRotY, 0);
   head.add(browRight);
 
   // ---- Cheeks (more prominent, rosy) ------------------------------------------
