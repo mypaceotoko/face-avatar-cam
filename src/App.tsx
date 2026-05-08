@@ -12,7 +12,17 @@ import { useThreeScene } from './hooks/useThreeScene';
 import { type CharacterType } from './three/avatarCharacters';
 
 export function App() {
-  const { videoRef, stream, status, error, start, stop } = useCamera();
+  const {
+    videoRef,
+    stream,
+    status,
+    error,
+    start,
+    stop,
+    wideAngle,
+    wideAngleSupported,
+    setWideAngle,
+  } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [debug, setDebug] = useState(false);
   const [tracking, setTrackingState] = useState(true);
@@ -63,6 +73,10 @@ export function App() {
 
   const onToggleGreenScreen = () => setGreenScreen((g) => !g);
 
+  const onToggleWideAngle = () => {
+    void setWideAngle(!wideAngle);
+  };
+
   return (
     <div className="app">
       <div className="stage">
@@ -106,6 +120,8 @@ export function App() {
         segmenterStatus={segmenter.status}
         segmenterError={segmenter.error}
         characterType={characterType}
+        wideAngle={wideAngle}
+        wideAngleSupported={wideAngleSupported}
         onStart={() => void start()}
         onStop={stop}
         onToggleTracking={onToggleTracking}
@@ -113,6 +129,7 @@ export function App() {
         onToggleRec={onToggleRec}
         onToggleDebug={() => setDebug((d) => !d)}
         onToggleGreenScreen={onToggleGreenScreen}
+        onToggleWideAngle={onToggleWideAngle}
         onCharacterChange={setCharacterType}
       />
     </div>

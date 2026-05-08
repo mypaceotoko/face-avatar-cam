@@ -16,6 +16,8 @@ type Props = {
   segmenterStatus: SegmenterStatus;
   segmenterError: string | null;
   characterType: CharacterType;
+  wideAngle: boolean;
+  wideAngleSupported: boolean;
   onStart: () => void;
   onStop: () => void;
   onToggleTracking: () => void;
@@ -23,6 +25,7 @@ type Props = {
   onToggleRec: () => void;
   onToggleDebug: () => void;
   onToggleGreenScreen: () => void;
+  onToggleWideAngle: () => void;
   onCharacterChange: (type: CharacterType) => void;
 };
 
@@ -39,6 +42,8 @@ export function ControlPanel({
   segmenterStatus,
   segmenterError,
   characterType,
+  wideAngle,
+  wideAngleSupported,
   onStart,
   onStop,
   onToggleTracking,
@@ -46,6 +51,7 @@ export function ControlPanel({
   onToggleRec,
   onToggleDebug,
   onToggleGreenScreen,
+  onToggleWideAngle,
   onCharacterChange,
 }: Props) {
   return (
@@ -92,6 +98,14 @@ export function ControlPanel({
             disabled={greenScreen && segmenterStatus === 'loading'}
           >
             グリーンバック {greenScreen ? 'ON' : 'OFF'}
+          </button>
+          <button
+            className={`btn ${wideAngle ? 'btn--primary' : ''}`}
+            onClick={onToggleWideAngle}
+            disabled={!wideAngleSupported}
+            title={wideAngleSupported ? '' : 'この端末では広角に対応していません'}
+          >
+            広角 {wideAngle ? 'ON' : 'OFF'}
           </button>
           {recStatus !== 'unsupported' && (
             <button
