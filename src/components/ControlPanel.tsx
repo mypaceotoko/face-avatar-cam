@@ -1,5 +1,9 @@
 import { CHARACTER_ORDER, CHARACTERS, type CharacterType } from '../three/avatarCharacters';
-import type { CameraStatus } from '../hooks/useCamera';
+import {
+  CAMERA_MODE_LABEL,
+  type CameraMode,
+  type CameraStatus,
+} from '../hooks/useCamera';
 import type { RecorderStatus } from '../hooks/useRecorder';
 import type { SegmenterStatus } from '../hooks/useSegmenter';
 
@@ -16,8 +20,8 @@ type Props = {
   segmenterStatus: SegmenterStatus;
   segmenterError: string | null;
   characterType: CharacterType;
-  wideAngle: boolean;
-  wideAngleSupported: boolean;
+  cameraMode: CameraMode;
+  availableCameraModes: CameraMode[];
   onStart: () => void;
   onStop: () => void;
   onToggleTracking: () => void;
@@ -25,7 +29,7 @@ type Props = {
   onToggleRec: () => void;
   onToggleDebug: () => void;
   onToggleGreenScreen: () => void;
-  onToggleWideAngle: () => void;
+  onCycleCamera: () => void;
   onCharacterChange: (type: CharacterType) => void;
 };
 
@@ -42,8 +46,8 @@ export function ControlPanel({
   segmenterStatus,
   segmenterError,
   characterType,
-  wideAngle,
-  wideAngleSupported,
+  cameraMode,
+  availableCameraModes,
   onStart,
   onStop,
   onToggleTracking,
@@ -51,9 +55,10 @@ export function ControlPanel({
   onToggleRec,
   onToggleDebug,
   onToggleGreenScreen,
-  onToggleWideAngle,
+  onCycleCamera,
   onCharacterChange,
 }: Props) {
+  const cameraCycleDisabled = availableCameraModes.length <= 1;
   return (
     <div className="controls">
       {/* Face / character selector — always visible so users can browse
@@ -100,12 +105,16 @@ export function ControlPanel({
             グリーンバック {greenScreen ? 'ON' : 'OFF'}
           </button>
           <button
-            className={`btn ${wideAngle ? 'btn--primary' : ''}`}
-            onClick={onToggleWideAngle}
-            disabled={!wideAngleSupported}
-            title={wideAngleSupported ? '' : 'この端末では広角に対応していません'}
+            className="btn"
+            onClick={onCycleCamera}
+            disabled={cameraCycleDisabled}
+            title={
+              cameraCycleDisabled
+                ? 'この端末では切り替え可能なカメラが見つかりません'
+                : 'タップで次のカメラへ'
+            }
           >
-            広角 {wideAngle ? 'ON' : 'OFF'}
+            {CAMERA_MODE_LABEL[cameraMode]}
           </button>
           {recStatus !== 'unsupported' && (
             <button

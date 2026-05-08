@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CameraStatus = 'idle' | 'starting' | 'ready' | 'error';
 
+export type CameraMode = 'front' | 'back' | 'back-wide';
+
+export const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
+  front: 'インカメ',
+  back: 'アウトカメ',
+  'back-wide': 'アウトカメ (広角)',
+};
+
+const ALL_MODES: CameraMode[] = ['front', 'back', 'back-wide'];
+
 export type UseCameraResult = {
   videoRef: React.RefObject<HTMLVideoElement>;
   stream: MediaStream | null;
@@ -9,57 +19,76 @@ export type UseCameraResult = {
   error: string | null;
   start: () => Promise<void>;
   stop: () => void;
-  wideAngle: boolean;
-  wideAngleSupported: boolean;
-  setWideAngle: (on: boolean) => Promise<void>;
+  mode: CameraMode;
+  availableModes: CameraMode[];
+  setMode: (mode: CameraMode) => Promise<void>;
 };
 
 type ZoomCapability = { min: number; max: number; step?: number };
 type ZoomSettings = { zoom?: number };
 
 const baseVideo = (deviceId?: string): MediaTrackConstraints => ({
-  ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
+  ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
   width: { ideal: 1280 },
   height: { ideal: 720 },
   frameRate: { ideal: 30, max: 60 },
 });
 
-const PREFERRED_CONSTRAINTS: MediaStreamConstraints = {
-  audio: true,
-  video: baseVideo(),
-};
+const FRONT_RE = /(front|user|self|前面|内側|内[側カ])/i;
+const BACK_RE = /(back|rear|environment|背面|外側|外[側カ])/i;
+const WIDE_RE = /(ultra[\s-]?wide|\bwide\b|広角|超広角)/i;
 
-const WIDE_LABEL_PATTERNS = [
-  /ultra[\s-]?wide/i,
-  /\bwide\b/i,
-  /広角/,
-  /超広角/,
-];
+type DeviceMap = Partial<Record<CameraMode, string>>;
 
-// Try to find a front-facing wide-angle camera by label. enumerateDevices() only
-// reveals labels after the user has granted permission once.
-async function findWideAngleDeviceId(currentDeviceId?: string): Promise<string | null> {
-  if (!navigator.mediaDevices?.enumerateDevices) return null;
+// Picks one deviceId per logical mode by inspecting labels. Labels are only
+// populated after the first getUserMedia grant, so callers must enumerate
+// after the initial stream is live.
+async function classifyDevices(): Promise<DeviceMap> {
+  if (!navigator.mediaDevices?.enumerateDevices) return {};
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter((d) => d.kind === 'videoinput' && d.deviceId);
-    // Prefer labels that include both "front/user/前面" and a wide hint.
-    const frontHint = /(front|user|self|前面|内[側カ])/i;
-    const wide = cams.find(
-      (d) =>
-        d.deviceId !== currentDeviceId &&
-        WIDE_LABEL_PATTERNS.some((re) => re.test(d.label)) &&
-        frontHint.test(d.label),
-    );
-    if (wide) return wide.deviceId;
-    // Fallback: any "wide" labelled cam other than the current one.
-    const anyWide = cams.find(
-      (d) => d.deviceId !== currentDeviceId && WIDE_LABEL_PATTERNS.some((re) => re.test(d.label)),
-    );
-    return anyWide?.deviceId ?? null;
+    const map: DeviceMap = {};
+
+    // Prefer the most specific match (back+wide) over just "back".
+    for (const cam of cams) {
+      const label = cam.label;
+      if (BACK_RE.test(label) && WIDE_RE.test(label)) {
+        if (!map['back-wide']) map['back-wide'] = cam.deviceId;
+      }
+    }
+    for (const cam of cams) {
+      const label = cam.label;
+      if (BACK_RE.test(label) && !WIDE_RE.test(label)) {
+        if (!map.back) map.back = cam.deviceId;
+      }
+    }
+    for (const cam of cams) {
+      const label = cam.label;
+      if (FRONT_RE.test(label) && !BACK_RE.test(label)) {
+        if (!map.front) map.front = cam.deviceId;
+      }
+    }
+    return map;
   } catch {
-    return null;
+    return {};
   }
+}
+
+function constraintsFor(mode: CameraMode, devices: DeviceMap): MediaStreamConstraints {
+  const id = devices[mode];
+  if (id) {
+    return { audio: true, video: baseVideo(id) };
+  }
+  if (mode === 'front') {
+    return { audio: true, video: { ...baseVideo(), facingMode: 'user' } };
+  }
+  // back / back-wide fallback when no matching deviceId surfaced — let the OS
+  // pick any rear camera. Wide is handled afterwards via applyConstraints.
+  return {
+    audio: true,
+    video: { ...baseVideo(), facingMode: { ideal: 'environment' } },
+  };
 }
 
 // iOS Safari: video must have playsinline + muted + autoplay to render in-page.
@@ -70,10 +99,9 @@ export function useCamera(): UseCameraResult {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<CameraStatus>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [wideAngle, setWideAngleState] = useState(false);
-  const [wideAngleSupported, setWideAngleSupported] = useState(false);
-  const wideDeviceIdRef = useRef<string | null>(null);
-  const normalDeviceIdRef = useRef<string | null>(null);
+  const [mode, setModeState] = useState<CameraMode>('front');
+  const [availableModes, setAvailableModes] = useState<CameraMode[]>(['front']);
+  const devicesRef = useRef<DeviceMap>({});
 
   const attachStream = useCallback(async (s: MediaStream) => {
     streamRef.current = s;
@@ -95,30 +123,34 @@ export function useCamera(): UseCameraResult {
     }
   }, []);
 
-  // Probe whether wide-angle is achievable: either a sub-1.0 zoom range, or a
-  // separate wide-labelled device. Run after the first stream is live so the
-  // device labels are populated.
-  const probeWideAngle = useCallback(async () => {
+  // Try a sub-1.0 zoom on the live track (ultra-wide on Android multi-lens
+  // cameras). Best effort — silently no-op if the platform doesn't expose it.
+  const tryApplyWideZoom = useCallback(async () => {
     const s = streamRef.current;
     if (!s) return;
     const track = s.getVideoTracks()[0];
     if (!track) return;
-    normalDeviceIdRef.current = track.getSettings().deviceId ?? null;
-
-    let supported = false;
-
     const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
       zoom?: ZoomCapability;
     };
-    if (caps.zoom && typeof caps.zoom.min === 'number' && caps.zoom.min < 1) {
-      supported = true;
+    if (caps.zoom && caps.zoom.min < 1) {
+      try {
+        await track.applyConstraints({
+          advanced: [{ zoom: caps.zoom.min } as MediaTrackConstraintSet & ZoomSettings],
+        });
+      } catch {
+        /* ignore */
+      }
     }
+  }, []);
 
-    const wideId = await findWideAngleDeviceId(normalDeviceIdRef.current ?? undefined);
-    wideDeviceIdRef.current = wideId;
-    if (wideId) supported = true;
-
-    setWideAngleSupported(supported);
+  const refreshAvailableModes = useCallback(async () => {
+    devicesRef.current = await classifyDevices();
+    const modes = ALL_MODES.filter((m) => {
+      if (m === 'front') return true; // front is always assumed available
+      return !!devicesRef.current[m];
+    });
+    setAvailableModes(modes);
   }, []);
 
   const start = useCallback(async () => {
@@ -126,17 +158,20 @@ export function useCamera(): UseCameraResult {
     setStatus('starting');
     setError(null);
     try {
-      const s = await navigator.mediaDevices.getUserMedia(PREFERRED_CONSTRAINTS);
+      const s = await navigator.mediaDevices.getUserMedia(
+        constraintsFor('front', devicesRef.current),
+      );
       await attachStream(s);
+      setModeState('front');
       setStatus('ready');
-      // Labels become available after the first permission grant; safe to probe now.
-      void probeWideAngle();
+      // Labels become available after the first permission grant.
+      void refreshAvailableModes();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       setStatus('error');
     }
-  }, [attachStream, probeWideAngle]);
+  }, [attachStream, refreshAvailableModes]);
 
   const stop = useCallback(() => {
     const s = streamRef.current;
@@ -146,65 +181,48 @@ export function useCamera(): UseCameraResult {
     setStream(null);
     if (videoRef.current) videoRef.current.srcObject = null;
     setStatus('idle');
-    setWideAngleState(false);
-    setWideAngleSupported(false);
-    wideDeviceIdRef.current = null;
-    normalDeviceIdRef.current = null;
+    setModeState('front');
+    setAvailableModes(['front']);
+    devicesRef.current = {};
   }, []);
 
-  const setWideAngle = useCallback(
-    async (on: boolean) => {
-      const s = streamRef.current;
-      if (!s) return;
-      const track = s.getVideoTracks()[0];
-      if (!track) return;
+  const setMode = useCallback(
+    async (next: CameraMode) => {
+      if (next === mode) return;
+      const prev = streamRef.current;
+      if (!prev) return;
 
-      const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
-        zoom?: ZoomCapability;
-      };
-      const settings = (track.getSettings?.() ?? {}) as MediaTrackSettings & ZoomSettings;
-
-      // Path 1: same-device zoom (e.g. Android sub-1.0 zoom maps to ultrawide).
-      if (caps.zoom && caps.zoom.min < 1) {
-        const target = on ? caps.zoom.min : Math.min(1, caps.zoom.max);
-        if (typeof settings.zoom !== 'number' || Math.abs(settings.zoom - target) > 1e-3) {
-          try {
-            await track.applyConstraints({
-              advanced: [{ zoom: target } as MediaTrackConstraintSet & ZoomSettings],
-            });
-            setWideAngleState(on);
-            return;
-          } catch {
-            // fall through to device-swap path
-          }
-        } else {
-          setWideAngleState(on);
-          return;
-        }
-      }
-
-      // Path 2: swap to a separately-enumerated wide-angle device.
-      const targetId = on ? wideDeviceIdRef.current : normalDeviceIdRef.current;
-      if (!targetId) {
-        // No way to honour the request; leave state alone.
-        return;
-      }
       try {
-        // Stop the old tracks before starting new — iOS Safari refuses
-        // simultaneous getUserMedia on two cameras.
-        s.getTracks().forEach((t) => t.stop());
-        const next = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: baseVideo(targetId),
-        });
-        await attachStream(next);
-        setWideAngleState(on);
+        // iOS Safari refuses simultaneous getUserMedia on two cameras, so the
+        // old tracks are released before requesting the new stream.
+        prev.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+
+        const constraints = constraintsFor(next, devicesRef.current);
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        await attachStream(s);
+        setModeState(next);
+        if (next === 'back-wide' && !devicesRef.current['back-wide']) {
+          // No dedicated wide deviceId — try widening via the zoom constraint.
+          await tryApplyWideZoom();
+        }
+        setError(null);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
+        // Best-effort fallback: try to bring the previous mode back so the
+        // user isn't left with a black screen.
+        try {
+          const fallback = await navigator.mediaDevices.getUserMedia(
+            constraintsFor(mode, devicesRef.current),
+          );
+          await attachStream(fallback);
+        } catch {
+          setStatus('error');
+        }
       }
     },
-    [attachStream],
+    [attachStream, mode, tryApplyWideZoom],
   );
 
   useEffect(() => {
@@ -221,8 +239,8 @@ export function useCamera(): UseCameraResult {
     error,
     start,
     stop,
-    wideAngle,
-    wideAngleSupported,
-    setWideAngle,
+    mode,
+    availableModes,
+    setMode,
   };
 }
