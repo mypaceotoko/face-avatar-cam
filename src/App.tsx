@@ -19,9 +19,9 @@ export function App() {
     error,
     start,
     stop,
-    wideAngle,
-    wideAngleSupported,
-    setWideAngle,
+    mode,
+    availableModes,
+    setMode,
   } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [debug, setDebug] = useState(false);
@@ -44,6 +44,14 @@ export function App() {
     segmenter.maskRef,
     greenScreenRef,
   );
+
+  // Front camera frames are mirrored so the user reads them as a selfie. Back
+  // camera frames are world-facing, so leave them un-mirrored. Toggling the
+  // root flips both the video plane and the avatar in lock-step.
+  useEffect(() => {
+    if (!mirrorRoot) return;
+    mirrorRoot.scale.x = mode === 'front' ? -1 : 1;
+  }, [mirrorRoot, mode]);
 
   const {
     status: faceStatus,
@@ -73,8 +81,11 @@ export function App() {
 
   const onToggleGreenScreen = () => setGreenScreen((g) => !g);
 
-  const onToggleWideAngle = () => {
-    void setWideAngle(!wideAngle);
+  const onCycleCamera = () => {
+    if (availableModes.length <= 1) return;
+    const idx = availableModes.indexOf(mode);
+    const next = availableModes[(idx + 1) % availableModes.length];
+    void setMode(next);
   };
 
   return (
@@ -120,8 +131,8 @@ export function App() {
         segmenterStatus={segmenter.status}
         segmenterError={segmenter.error}
         characterType={characterType}
-        wideAngle={wideAngle}
-        wideAngleSupported={wideAngleSupported}
+        cameraMode={mode}
+        availableCameraModes={availableModes}
         onStart={() => void start()}
         onStop={stop}
         onToggleTracking={onToggleTracking}
@@ -129,7 +140,7 @@ export function App() {
         onToggleRec={onToggleRec}
         onToggleDebug={() => setDebug((d) => !d)}
         onToggleGreenScreen={onToggleGreenScreen}
-        onToggleWideAngle={onToggleWideAngle}
+        onCycleCamera={onCycleCamera}
         onCharacterChange={setCharacterType}
       />
     </div>
