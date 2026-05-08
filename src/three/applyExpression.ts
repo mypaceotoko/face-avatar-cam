@@ -9,25 +9,15 @@ const _scl = new THREE.Vector3();
 const _slerpQ = new THREE.Quaternion();
 
 /** Apply head pose. Decompose so we can keep our own scale (HEAD_SCALE_CM)
- *  while taking the rotation+translation from the FaceLandmarker matrix.
- *  When `restingPosition` is provided, position is lerped toward that point
- *  instead of toward the matrix translation — useful when the camera FOV
- *  differs strongly from FaceLandmarker's assumed intrinsics (e.g. ultrawide
- *  back lens) where the matrix translation goes wildly off-screen but the
- *  rotation is still meaningful. */
+ *  while taking the rotation+translation from the FaceLandmarker matrix. */
 export function applyHeadPose(
   rig: AvatarRig,
   matrixData: Float32Array,
   poseLerp = 0.55,
-  restingPosition: THREE.Vector3 | null = null,
 ) {
   _m.fromArray(matrixData);
   _m.decompose(_pos, _quat, _scl);
-  if (restingPosition) {
-    rig.root.position.lerp(restingPosition, 0.15);
-  } else {
-    rig.root.position.lerp(_pos, poseLerp);
-  }
+  rig.root.position.lerp(_pos, poseLerp);
   _slerpQ.copy(rig.root.quaternion).slerp(_quat, poseLerp);
   rig.root.quaternion.copy(_slerpQ);
 }
