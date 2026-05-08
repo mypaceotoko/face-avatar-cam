@@ -50,7 +50,7 @@ export function App() {
   // root flips both the video plane and the avatar in lock-step.
   useEffect(() => {
     if (!mirrorRoot) return;
-    mirrorRoot.scale.x = mode === 'front' ? -1 : 1;
+    mirrorRoot.scale.x = mode === 'front' || mode === 'front-wide' ? -1 : 1;
   }, [mirrorRoot, mode]);
 
   const {
