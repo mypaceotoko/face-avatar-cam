@@ -31,6 +31,7 @@ export function useAvatarRig(
   parent: THREE.Group | null,
   faceStateRef: React.MutableRefObject<FaceState>,
   characterType: CharacterType = 'child',
+  rotationOnlyRef?: React.MutableRefObject<boolean>,
 ): AvatarController {
   const rigRef = useRef<AvatarRig | null>(null);
   const trackingRef = useRef(true);
@@ -49,6 +50,8 @@ export function useAvatarRig(
     parent.add(rig.root);
     rigRef.current = rig;
 
+    const restingPos = new THREE.Vector3(0, 0, PLACEHOLDER_Z_CM);
+
     // Reset smoothing and calibration so every character starts from a
     // neutral baseline rather than inheriting the previous character's state.
     smootherRef.current.reset();
@@ -61,7 +64,12 @@ export function useAvatarRig(
         const fs = faceStateRef.current;
         const now = performance.now();
         if (trackingRef.current && fs.detected) {
-          applyHeadPose(r, fs.headMatrix);
+          applyHeadPose(
+            r,
+            fs.headMatrix,
+            0.55,
+            rotationOnlyRef?.current ? restingPos : null,
+          );
           const raw = scratchBs.current;
           const src = fs.bs;
           for (const k in src) {
