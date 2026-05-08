@@ -10,8 +10,6 @@ export const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
   'back-wide': 'アウトカメ (広角)',
 };
 
-const ALL_MODES: CameraMode[] = ['front', 'back', 'back-wide'];
-
 export type UseCameraResult = {
   videoRef: React.RefObject<HTMLVideoElement>;
   stream: MediaStream | null;
@@ -34,39 +32,35 @@ const baseVideo = (deviceId?: string): MediaTrackConstraints => ({
   frameRate: { ideal: 30, max: 60 },
 });
 
-const FRONT_RE = /(front|user|self|前面|内側|内[側カ])/i;
-const BACK_RE = /(back|rear|environment|背面|外側|外[側カ])/i;
-const WIDE_RE = /(ultra[\s-]?wide|\bwide\b|広角|超広角)/i;
+const FRONT_RE = /(front|user|self|前面|内側)/i;
+const BACK_RE = /(back|rear|environment|背面|外側)/i;
+// "Back Dual Wide Camera" / "Back Triple Camera" are virtual multi-lens
+// devices on iPhone whose ultrawide is reached via zoom < 1 — not via a
+// distinct deviceId — so plain "wide" must NOT count as a wide-back device.
+// Only ultrawide / 超広角 labels qualify here.
+const ULTRAWIDE_RE = /(ultra[\s-]?wide|超広角)/i;
 
 type DeviceMap = Partial<Record<CameraMode, string>>;
 
-// Picks one deviceId per logical mode by inspecting labels. Labels are only
-// populated after the first getUserMedia grant, so callers must enumerate
-// after the initial stream is live.
 async function classifyDevices(): Promise<DeviceMap> {
   if (!navigator.mediaDevices?.enumerateDevices) return {};
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter((d) => d.kind === 'videoinput' && d.deviceId);
     const map: DeviceMap = {};
-
-    // Prefer the most specific match (back+wide) over just "back".
     for (const cam of cams) {
-      const label = cam.label;
-      if (BACK_RE.test(label) && WIDE_RE.test(label)) {
-        if (!map['back-wide']) map['back-wide'] = cam.deviceId;
+      if (BACK_RE.test(cam.label) && ULTRAWIDE_RE.test(cam.label) && !map['back-wide']) {
+        map['back-wide'] = cam.deviceId;
       }
     }
     for (const cam of cams) {
-      const label = cam.label;
-      if (BACK_RE.test(label) && !WIDE_RE.test(label)) {
-        if (!map.back) map.back = cam.deviceId;
+      if (BACK_RE.test(cam.label) && !ULTRAWIDE_RE.test(cam.label) && !map.back) {
+        map.back = cam.deviceId;
       }
     }
     for (const cam of cams) {
-      const label = cam.label;
-      if (FRONT_RE.test(label) && !BACK_RE.test(label)) {
-        if (!map.front) map.front = cam.deviceId;
+      if (FRONT_RE.test(cam.label) && !BACK_RE.test(cam.label) && !map.front) {
+        map.front = cam.deviceId;
       }
     }
     return map;
@@ -75,20 +69,46 @@ async function classifyDevices(): Promise<DeviceMap> {
   }
 }
 
-function constraintsFor(mode: CameraMode, devices: DeviceMap): MediaStreamConstraints {
-  const id = devices[mode];
-  if (id) {
-    return { audio: true, video: baseVideo(id) };
-  }
-  if (mode === 'front') {
-    return { audio: true, video: { ...baseVideo(), facingMode: 'user' } };
-  }
-  // back / back-wide fallback when no matching deviceId surfaced — let the OS
-  // pick any rear camera. Wide is handled afterwards via applyConstraints.
+function frontConstraints(deviceId?: string): MediaStreamConstraints {
+  if (deviceId) return { audio: true, video: baseVideo(deviceId) };
+  return { audio: true, video: { ...baseVideo(), facingMode: 'user' } };
+}
+
+function backConstraints(deviceId?: string): MediaStreamConstraints {
+  if (deviceId) return { audio: true, video: baseVideo(deviceId) };
   return {
     audio: true,
     video: { ...baseVideo(), facingMode: { ideal: 'environment' } },
   };
+}
+
+function constraintsFor(mode: CameraMode, devices: DeviceMap): MediaStreamConstraints {
+  if (mode === 'front') return frontConstraints(devices.front);
+  if (mode === 'back-wide') {
+    // Prefer dedicated ultrawide device; otherwise reuse the standard back
+    // device and engage ultrawide via zoom after the stream is live.
+    return backConstraints(devices['back-wide'] ?? devices.back);
+  }
+  return backConstraints(devices.back);
+}
+
+function getZoomCaps(track: MediaStreamTrack | undefined): ZoomCapability | null {
+  if (!track) return null;
+  const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
+    zoom?: ZoomCapability;
+  };
+  return caps.zoom ?? null;
+}
+
+async function applyZoom(track: MediaStreamTrack, zoom: number): Promise<boolean> {
+  try {
+    await track.applyConstraints({
+      advanced: [{ zoom } as MediaTrackConstraintSet & ZoomSettings],
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // iOS Safari: video must have playsinline + muted + autoplay to render in-page.
@@ -123,55 +143,37 @@ export function useCamera(): UseCameraResult {
     }
   }, []);
 
-  // Try a sub-1.0 zoom on the live track (ultra-wide on Android multi-lens
-  // cameras). Best effort — silently no-op if the platform doesn't expose it.
-  const tryApplyWideZoom = useCallback(async () => {
-    const s = streamRef.current;
-    if (!s) return;
-    const track = s.getVideoTracks()[0];
-    if (!track) return;
-    const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & {
-      zoom?: ZoomCapability;
-    };
-    if (caps.zoom && caps.zoom.min < 1) {
-      try {
-        await track.applyConstraints({
-          advanced: [{ zoom: caps.zoom.min } as MediaTrackConstraintSet & ZoomSettings],
-        });
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
-
-  const refreshAvailableModes = useCallback(async () => {
-    devicesRef.current = await classifyDevices();
-    const modes = ALL_MODES.filter((m) => {
-      if (m === 'front') return true; // front is always assumed available
-      return !!devicesRef.current[m];
-    });
+  const recomputeAvailable = useCallback(() => {
+    const modes: CameraMode[] = ['front'];
+    const hasBackDevice = !!devicesRef.current.back || !!devicesRef.current['back-wide'];
+    if (hasBackDevice) modes.push('back');
+    const liveCaps = getZoomCaps(streamRef.current?.getVideoTracks()[0]);
+    const liveTrackCanWiden = !!liveCaps && liveCaps.min < 1;
+    if (devicesRef.current['back-wide'] || liveTrackCanWiden) modes.push('back-wide');
     setAvailableModes(modes);
   }, []);
+
+  const refreshDevices = useCallback(async () => {
+    devicesRef.current = await classifyDevices();
+    recomputeAvailable();
+  }, [recomputeAvailable]);
 
   const start = useCallback(async () => {
     if (streamRef.current) return;
     setStatus('starting');
     setError(null);
     try {
-      const s = await navigator.mediaDevices.getUserMedia(
-        constraintsFor('front', devicesRef.current),
-      );
+      const s = await navigator.mediaDevices.getUserMedia(frontConstraints());
       await attachStream(s);
       setModeState('front');
       setStatus('ready');
-      // Labels become available after the first permission grant.
-      void refreshAvailableModes();
+      void refreshDevices();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       setStatus('error');
     }
-  }, [attachStream, refreshAvailableModes]);
+  }, [attachStream, refreshDevices]);
 
   const stop = useCallback(() => {
     const s = streamRef.current;
@@ -192,26 +194,58 @@ export function useCamera(): UseCameraResult {
       const prev = streamRef.current;
       if (!prev) return;
 
+      // Fast path: switch back ↔ back-wide on the same multi-lens device
+      // by adjusting zoom only. Avoids a getUserMedia round-trip and the
+      // permission re-check flicker on mobile.
+      if (
+        (mode === 'back' || mode === 'back-wide') &&
+        (next === 'back' || next === 'back-wide') &&
+        // Only if neither side has a dedicated deviceId — otherwise we want
+        // to physically swap to that lens.
+        !devicesRef.current['back-wide']
+      ) {
+        const track = prev.getVideoTracks()[0];
+        const caps = getZoomCaps(track);
+        if (track && caps && caps.min < 1) {
+          const target = next === 'back-wide' ? caps.min : Math.min(1, caps.max);
+          if (await applyZoom(track, target)) {
+            setModeState(next);
+            return;
+          }
+        }
+        // fall through to full reopen
+      }
+
       try {
-        // iOS Safari refuses simultaneous getUserMedia on two cameras, so the
-        // old tracks are released before requesting the new stream.
+        // iOS Safari refuses simultaneous getUserMedia on two cameras.
         prev.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
 
-        const constraints = constraintsFor(next, devicesRef.current);
-        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        const s = await navigator.mediaDevices.getUserMedia(
+          constraintsFor(next, devicesRef.current),
+        );
         await attachStream(s);
         setModeState(next);
-        if (next === 'back-wide' && !devicesRef.current['back-wide']) {
-          // No dedicated wide deviceId — try widening via the zoom constraint.
-          await tryApplyWideZoom();
-        }
         setError(null);
+
+        const track = s.getVideoTracks()[0];
+        const caps = getZoomCaps(track);
+
+        if (next === 'back-wide' && !devicesRef.current['back-wide'] && track && caps && caps.min < 1) {
+          // No dedicated ultrawide device — engage ultrawide through zoom.
+          await applyZoom(track, caps.min);
+        } else if (next === 'back' && track && caps && caps.min < 1) {
+          // Reset zoom to standard so we don't inherit a previous wide setting.
+          await applyZoom(track, Math.min(1, caps.max));
+        }
+
+        // After the first back grant iOS can reveal additional labels, and
+        // the freshly-opened track's zoom caps tell us whether this device
+        // can engage ultrawide at all. Refresh both signals.
+        await refreshDevices();
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
-        // Best-effort fallback: try to bring the previous mode back so the
-        // user isn't left with a black screen.
         try {
           const fallback = await navigator.mediaDevices.getUserMedia(
             constraintsFor(mode, devicesRef.current),
@@ -222,7 +256,7 @@ export function useCamera(): UseCameraResult {
         }
       }
     },
-    [attachStream, mode, tryApplyWideZoom],
+    [attachStream, mode, refreshDevices],
   );
 
   useEffect(() => {
