@@ -38,7 +38,6 @@ export function useFaceLandmarker(
     let landmarker: FaceLandmarker | null = null;
     let raf = 0;
     let cancelled = false;
-    let lastVideoTimeMs = -1;
     let lastFpsT = performance.now();
     let frameCount = 0;
 
@@ -66,14 +65,15 @@ export function useFaceLandmarker(
         return;
       }
 
+      // iOS Safari has been observed to stop advancing video.currentTime after
+      // applyConstraints({ zoom }) on a multi-lens back camera, even though
+      // frames keep rendering visually. Gating detection on currentTime would
+      // freeze tracking on the ultrawide back lens, so we only sanity-check
+      // readyState/videoWidth and rely on performance.now() (always monotonic)
+      // for the timestamp passed to MediaPipe.
       const tick = () => {
         if (cancelled || !landmarker) return;
-        if (
-          video.readyState >= 2 &&
-          video.currentTime !== lastVideoTimeMs &&
-          video.videoWidth > 0
-        ) {
-          lastVideoTimeMs = video.currentTime;
+        if (video.readyState >= 2 && video.videoWidth > 0) {
           const now = performance.now();
           try {
             const result = landmarker.detectForVideo(video, now);

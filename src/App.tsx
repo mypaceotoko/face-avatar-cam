@@ -53,23 +53,13 @@ export function App() {
     mirrorRoot.scale.x = mode === 'front' ? -1 : 1;
   }, [mirrorRoot, mode]);
 
-  // FaceLandmarker's facialTransformationMatrix is computed against an assumed
-  // ~70° camera FOV. On the back ultrawide lens (~120°) the translation goes
-  // way off-screen even when the face is detected, so we drive the avatar's
-  // rotation only and pin its position. Updated through a ref so the rig
-  // doesn't re-mount on each camera toggle.
-  const rotationOnlyRef = useRef(false);
-  useEffect(() => {
-    rotationOnlyRef.current = mode === 'back-wide';
-  }, [mode]);
-
   const {
     status: faceStatus,
     error: faceError,
     refs: faceRefs,
   } = useFaceLandmarker(videoRef, sceneActive);
 
-  const avatar = useAvatarRig(mirrorRoot, faceRefs.state, characterType, rotationOnlyRef);
+  const avatar = useAvatarRig(mirrorRoot, faceRefs.state, characterType);
   const recorder = useRecorder(canvasRef, stream);
 
   const onToggleTracking = () => {
