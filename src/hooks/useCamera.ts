@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CameraStatus = 'idle' | 'starting' | 'ready' | 'error';
 
-export type CameraMode = 'front' | 'back' | 'back-wide';
+export type CameraMode = 'front' | 'front-wide' | 'back' | 'back-wide';
 
 export const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
   front: 'インカメ',
+  'front-wide': 'インカメ (広角)',
   back: 'アウトカメ',
   'back-wide': 'アウトカメ (広角)',
 };
@@ -83,7 +84,9 @@ function backConstraints(deviceId?: string): MediaStreamConstraints {
 }
 
 function constraintsFor(mode: CameraMode, devices: DeviceMap): MediaStreamConstraints {
-  if (mode === 'front') return frontConstraints(devices.front);
+  // iPhones expose only one front lens; "front-wide" reuses the same device
+  // and engages a wider FOV via zoom < 1 once the stream is live.
+  if (mode === 'front' || mode === 'front-wide') return frontConstraints(devices.front);
   if (mode === 'back-wide') {
     // Prefer dedicated ultrawide device; otherwise reuse the standard back
     // device and engage ultrawide via zoom after the stream is live.
@@ -122,6 +125,10 @@ export function useCamera(): UseCameraResult {
   const [mode, setModeState] = useState<CameraMode>('front');
   const [availableModes, setAvailableModes] = useState<CameraMode[]>(['front']);
   const devicesRef = useRef<DeviceMap>({});
+  // Latched once we observe zoom.min < 1 on the live front track. iPhones
+  // never expose a separate ultrawide front device, so this is the only
+  // signal that the front lens can be widened.
+  const frontCanWidenRef = useRef(false);
 
   const attachStream = useCallback(async (s: MediaStream) => {
     streamRef.current = s;
@@ -145,12 +152,18 @@ export function useCamera(): UseCameraResult {
 
   const recomputeAvailable = useCallback(() => {
     const modes: CameraMode[] = ['front'];
+    if (frontCanWidenRef.current) modes.push('front-wide');
     const hasBackDevice = !!devicesRef.current.back || !!devicesRef.current['back-wide'];
     if (hasBackDevice) modes.push('back');
     const liveCaps = getZoomCaps(streamRef.current?.getVideoTracks()[0]);
     const liveTrackCanWiden = !!liveCaps && liveCaps.min < 1;
     if (devicesRef.current['back-wide'] || liveTrackCanWiden) modes.push('back-wide');
     setAvailableModes(modes);
+  }, []);
+
+  const probeFrontWiden = useCallback((track: MediaStreamTrack | undefined) => {
+    const caps = getZoomCaps(track);
+    if (caps && caps.min < 1) frontCanWidenRef.current = true;
   }, []);
 
   const refreshDevices = useCallback(async () => {
@@ -165,6 +178,7 @@ export function useCamera(): UseCameraResult {
     try {
       const s = await navigator.mediaDevices.getUserMedia(frontConstraints());
       await attachStream(s);
+      probeFrontWiden(s.getVideoTracks()[0]);
       setModeState('front');
       setStatus('ready');
       void refreshDevices();
@@ -173,7 +187,7 @@ export function useCamera(): UseCameraResult {
       setError(msg);
       setStatus('error');
     }
-  }, [attachStream, refreshDevices]);
+  }, [attachStream, probeFrontWiden, refreshDevices]);
 
   const stop = useCallback(() => {
     const s = streamRef.current;
@@ -186,6 +200,7 @@ export function useCamera(): UseCameraResult {
     setModeState('front');
     setAvailableModes(['front']);
     devicesRef.current = {};
+    frontCanWidenRef.current = false;
   }, []);
 
   const setMode = useCallback(
@@ -216,6 +231,23 @@ export function useCamera(): UseCameraResult {
         // fall through to full reopen
       }
 
+      // Same fast path for front ↔ front-wide. iPhones never expose a
+      // separate ultrawide front lens, so this is the only way to widen.
+      if (
+        (mode === 'front' || mode === 'front-wide') &&
+        (next === 'front' || next === 'front-wide')
+      ) {
+        const track = prev.getVideoTracks()[0];
+        const caps = getZoomCaps(track);
+        if (track && caps && caps.min < 1) {
+          const target = next === 'front-wide' ? caps.min : Math.min(1, caps.max);
+          if (await applyZoom(track, target)) {
+            setModeState(next);
+            return;
+          }
+        }
+      }
+
       try {
         // iOS Safari refuses simultaneous getUserMedia on two cameras.
         prev.getTracks().forEach((t) => t.stop());
@@ -237,7 +269,13 @@ export function useCamera(): UseCameraResult {
         } else if (next === 'back' && track && caps && caps.min < 1) {
           // Reset zoom to standard so we don't inherit a previous wide setting.
           await applyZoom(track, Math.min(1, caps.max));
+        } else if (next === 'front-wide' && track && caps && caps.min < 1) {
+          await applyZoom(track, caps.min);
+        } else if (next === 'front' && track && caps && caps.min < 1) {
+          await applyZoom(track, Math.min(1, caps.max));
         }
+
+        if (next === 'front' || next === 'front-wide') probeFrontWiden(track);
 
         // After the first back grant iOS can reveal additional labels, and
         // the freshly-opened track's zoom caps tell us whether this device
@@ -256,7 +294,7 @@ export function useCamera(): UseCameraResult {
         }
       }
     },
-    [attachStream, mode, refreshDevices],
+    [attachStream, mode, probeFrontWiden, refreshDevices],
   );
 
   useEffect(() => {
