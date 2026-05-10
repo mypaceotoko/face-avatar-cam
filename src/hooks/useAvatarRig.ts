@@ -14,7 +14,12 @@ import { applyExpression, applyHeadPose } from '../three/applyExpression';
 import { type CharacterType } from '../three/avatarCharacters';
 import { createAvatar, type AvatarRig } from '../three/createAvatar';
 
-const HEAD_SCALE_CM = 14;
+// Avatar head physical size in centimetres. The skull radius (≈0.9 in
+// unit space) ends up at HEAD_SCALE_CM × 0.9 ≈ 16cm at 18cm. We size the
+// avatar a bit larger than an average human head so that when the user
+// tilts/rotates, their real hair and forehead stay hidden behind the
+// avatar mesh instead of poking out at the edges.
+const HEAD_SCALE_CM = 18;
 const PLACEHOLDER_Z_CM = -55;
 
 export type AvatarController = {
