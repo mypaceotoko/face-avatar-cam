@@ -2,10 +2,15 @@ export type CharacterType =
   | 'child'
   | 'boy'
   | 'youngman'
+  | 'youngmanB'
+  | 'driver'
   | 'girl'
   | 'woman'
+  | 'womanB'
+  | 'womanC'
   | 'uncle'
-  | 'grandpa';
+  | 'grandpa'
+  | 'ghost';
 
 export interface CharacterConfig {
   labelJa: string;
@@ -60,10 +65,18 @@ export interface CharacterConfig {
     | 'child'
     | 'boyswept'
     | 'youngmancool'
+    | 'youngmanmessy'
     | 'girllong'
     | 'woman'
+    | 'womanbob'
+    | 'womanwave'
     | 'man'
-    | 'grandpa';
+    | 'grandpa'
+    | 'ghost';
+  // Hat / headwear (police cap, etc.)
+  hatStyle: 'none' | 'driver';
+  // Ghost-specific overrides (translucent skin, halo aura, glowing eyes)
+  isGhost: boolean;
   // Special decorative features
   hasLashes: boolean;
   hasBlush: boolean;   // permanent rose cheek circles (Memoji-style)
@@ -155,6 +168,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   // Reference: chubby-cheeked boy with volumized swept-back chocolate hair,
@@ -221,6 +236,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   // Fresh, cool young man (青年). The "爽やかなカッコいい" archetype: clean
@@ -292,6 +309,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   // Reference: refined Memoji girl - smooth face contours, large but elegant eyes,
@@ -359,6 +378,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   woman: {
@@ -420,6 +441,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   uncle: {
@@ -481,6 +504,8 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'stubble',
     hasGlasses: false,
     hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
   },
 
   grandpa: {
@@ -537,6 +562,326 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     beardStyle: 'full',
     hasGlasses: true,
     hasWrinkles: true,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
+  // ===========================================================================
+  // 青年B (youngmanB) — moodier, slightly tanner cool-guy archetype.
+  // Tousled messy hair, sharper jawline, stubble, deep amber eyes. Designed to
+  // read as the "sharper / more rugged" sibling of `youngman` so users can
+  // pick between two distinct young-adult-male looks.
+  // ===========================================================================
+  youngmanB: {
+    labelJa: '青年B',
+    headScaleX: 1.00,
+    headScaleY: 1.11,
+    headScaleZ: 0.99,
+    eyeRadius: 0.220,
+    eyeOffsetX: 0.310,
+    eyeOffsetY: 0.072,
+    eyeZ: 0.770,
+    irisRadius: 0.146,
+    browWidth: 0.34,
+    browHeight: 0.066,
+    browDepth: 0.078,
+    browOffsetX: 0.310,
+    browOffsetY: 0.350,
+    browOffsetZ: 0.808,
+    browRotY: 0.20,
+    browRotZInner: 0.02,
+    noseRadius: 0.064,
+    noseOffsetY: -0.082,
+    noseZ: 0.948,
+    noseScaleX: 0.88,
+    noseScaleY: 1.05,
+    noseScaleZ: 0.84,
+    earRadius: 0.12,
+    earOffsetX: 0.91,
+    mouthOffsetY: -0.350,
+    mouthOffsetZ: 0.823,
+    lipTorusRadius: 0.128,
+    lipTubeRadius: 0.034,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.49,
+    cheekOffsetY: -0.14,
+    cheekOffsetZ: 0.62,
+    skinColor: 0xeab68a,        // warm tan, slightly darker than youngman
+    cheekColor: 0xd07c66,
+    hairColor: 0x281a12,        // deep warm chocolate
+    irisColor: 0x3a2010,
+    lipColor: 0xb86658,
+    browColor: 0x281a12,
+    hairStyle: 'youngmanmessy',
+    hasLashes: false,
+    hasBlush: false,
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: true,
+    hasEyeAccents: true,
+    hasBeard: true,
+    beardColor: 0x1a1008,
+    beardStyle: 'stubble',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
+  // ===========================================================================
+  // 運転手 (driver) — uniformed chauffeur / taxi driver. Built on top of the
+  // cool-young-man base so the face reads as composed/professional, with a
+  // navy peaked driver's cap (silver button on the crown) that covers most
+  // of the hair. Clean-shaven, sharp brows, focused eyes.
+  // ===========================================================================
+  driver: {
+    labelJa: '運転手',
+    headScaleX: 1.00,
+    headScaleY: 1.08,
+    headScaleZ: 1.00,
+    eyeRadius: 0.220,
+    eyeOffsetX: 0.305,
+    eyeOffsetY: 0.072,
+    eyeZ: 0.770,
+    irisRadius: 0.146,
+    browWidth: 0.33,
+    browHeight: 0.066,
+    browDepth: 0.078,
+    browOffsetX: 0.305,
+    browOffsetY: 0.348,
+    browOffsetZ: 0.810,
+    browRotY: 0.18,
+    browRotZInner: 0.02,
+    noseRadius: 0.062,
+    noseOffsetY: -0.080,
+    noseZ: 0.948,
+    noseScaleX: 0.88,
+    noseScaleY: 1.02,
+    noseScaleZ: 0.82,
+    earRadius: 0.12,
+    earOffsetX: 0.90,
+    mouthOffsetY: -0.350,
+    mouthOffsetZ: 0.825,
+    lipTorusRadius: 0.128,
+    lipTubeRadius: 0.034,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.48,
+    cheekOffsetY: -0.13,
+    cheekOffsetZ: 0.64,
+    skinColor: 0xefb992,
+    cheekColor: 0xdc8a72,
+    hairColor: 0x140e0a,        // jet black under the cap
+    irisColor: 0x2e1a0c,
+    lipColor: 0xb86a5c,
+    browColor: 0x140e0a,
+    hairStyle: 'youngmancool',  // visible side hair below the cap
+    hasLashes: false,
+    hasBlush: false,
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: true,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'driver',
+    isGhost: false,
+  },
+
+  // ===========================================================================
+  // 女性B (womanB) — refined bob-cut woman. Blunt shoulder-length bob with a
+  // straight fringe across the forehead, porcelain skin, soft pink lips.
+  // Clearly distinct from `woman` (long flowing hair) and `girl` (long wave).
+  // ===========================================================================
+  womanB: {
+    labelJa: '女性B',
+    headScaleX: 0.96,
+    headScaleY: 1.04,
+    headScaleZ: 0.95,
+    eyeRadius: 0.245,
+    eyeOffsetX: 0.298,
+    eyeOffsetY: 0.092,
+    eyeZ: 0.770,
+    irisRadius: 0.168,
+    browWidth: 0.26,
+    browHeight: 0.044,
+    browDepth: 0.050,
+    browOffsetX: 0.298,
+    browOffsetY: 0.388,
+    browOffsetZ: 0.815,
+    browRotY: 0.14,
+    browRotZInner: 0.06,
+    noseRadius: 0.048,
+    noseOffsetY: -0.072,
+    noseZ: 0.940,
+    noseScaleX: 0.80,
+    noseScaleY: 0.86,
+    noseScaleZ: 0.68,
+    earRadius: 0.10,
+    earOffsetX: 0.86,
+    mouthOffsetY: -0.310,
+    mouthOffsetZ: 0.832,
+    lipTorusRadius: 0.142,
+    lipTubeRadius: 0.044,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.43,
+    cheekOffsetY: -0.10,
+    cheekOffsetZ: 0.68,
+    skinColor: 0xf9d8b0,        // porcelain peach
+    cheekColor: 0xff9c95,
+    hairColor: 0x342016,        // dark chocolate
+    irisColor: 0x4a2a14,
+    lipColor: 0xc46878,
+    browColor: 0x342016,
+    hairStyle: 'womanbob',
+    hasLashes: true,
+    hasBlush: true,
+    blushColor: 0xff9c95,
+    hasEyeMakeup: true,
+    hasLipGloss: true,
+    hasHairBangs: true,
+    hasHairHighlights: false,
+    hasEyeAccents: true,
+    hasBeard: false,
+    beardColor: 0x1e0e06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
+  // ===========================================================================
+  // 女性C (womanC) — side-parted wavy short hair. Auburn-warm hair with
+  // visible highlights and a softer, more natural makeup look. The "casual
+  // pretty" archetype, sitting between the polished `woman` and the youthful
+  // `girl`.
+  // ===========================================================================
+  womanC: {
+    labelJa: '女性C',
+    headScaleX: 0.97,
+    headScaleY: 1.05,
+    headScaleZ: 0.96,
+    eyeRadius: 0.240,
+    eyeOffsetX: 0.300,
+    eyeOffsetY: 0.090,
+    eyeZ: 0.770,
+    irisRadius: 0.162,
+    browWidth: 0.27,
+    browHeight: 0.046,
+    browDepth: 0.054,
+    browOffsetX: 0.300,
+    browOffsetY: 0.382,
+    browOffsetZ: 0.812,
+    browRotY: 0.15,
+    browRotZInner: 0.07,
+    noseRadius: 0.050,
+    noseOffsetY: -0.068,
+    noseZ: 0.940,
+    noseScaleX: 0.82,
+    noseScaleY: 0.88,
+    noseScaleZ: 0.70,
+    earRadius: 0.10,
+    earOffsetX: 0.87,
+    mouthOffsetY: -0.314,
+    mouthOffsetZ: 0.832,
+    lipTorusRadius: 0.138,
+    lipTubeRadius: 0.040,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.44,
+    cheekOffsetY: -0.10,
+    cheekOffsetZ: 0.68,
+    skinColor: 0xf3c89c,        // warm light peach
+    cheekColor: 0xeb8f7c,
+    hairColor: 0x4a2818,        // warm auburn
+    irisColor: 0x4a2814,
+    lipColor: 0xb05868,
+    browColor: 0x4a2818,
+    hairStyle: 'womanwave',
+    hasLashes: true,
+    hasBlush: true,
+    blushColor: 0xff9685,
+    hasEyeMakeup: false,
+    hasLipGloss: true,
+    hasHairBangs: false,
+    hasHairHighlights: true,
+    hasEyeAccents: true,
+    hasBeard: false,
+    beardColor: 0x1e0e06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
+  // ===========================================================================
+  // おばけ (ghost) — pale spectre. Cool grey skin, long stringy black hair
+  // hanging over the face, and glowing crimson eyes courtesy of the iris
+  // material's emissive channel responding to the deep-red iris color.
+  // ===========================================================================
+  ghost: {
+    labelJa: 'おばけ',
+    headScaleX: 0.98,
+    headScaleY: 1.08,
+    headScaleZ: 0.96,
+    eyeRadius: 0.245,
+    eyeOffsetX: 0.302,
+    eyeOffsetY: 0.085,
+    eyeZ: 0.770,
+    irisRadius: 0.165,
+    browWidth: 0.28,
+    browHeight: 0.058,
+    browDepth: 0.066,
+    browOffsetX: 0.302,
+    browOffsetY: 0.378,
+    browOffsetZ: 0.810,
+    browRotY: 0.16,
+    browRotZInner: 0.04,
+    noseRadius: 0.052,
+    noseOffsetY: -0.070,
+    noseZ: 0.940,
+    noseScaleX: 0.82,
+    noseScaleY: 0.90,
+    noseScaleZ: 0.70,
+    earRadius: 0.10,
+    earOffsetX: 0.86,
+    mouthOffsetY: -0.330,
+    mouthOffsetZ: 0.828,
+    lipTorusRadius: 0.130,
+    lipTubeRadius: 0.036,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.44,
+    cheekOffsetY: -0.12,
+    cheekOffsetZ: 0.66,
+    skinColor: 0xd5d8de,        // cool spectral grey
+    cheekColor: 0x9c8a90,
+    hairColor: 0x080608,        // deep void black
+    irisColor: 0xa01818,        // deep crimson — emissive will glow
+    lipColor: 0x886068,
+    browColor: 0x0a0708,
+    hairStyle: 'ghost',
+    hasLashes: false,
+    hasBlush: false,
+    blushColor: 0x886068,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: true,         // adds the bright catchlights inside the red glow
+    hasBeard: false,
+    beardColor: 0x080608,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: true,
   },
 };
 
@@ -544,8 +889,13 @@ export const CHARACTER_ORDER: CharacterType[] = [
   'child',
   'boy',
   'youngman',
+  'youngmanB',
+  'driver',
   'girl',
   'woman',
+  'womanB',
+  'womanC',
   'uncle',
   'grandpa',
+  'ghost',
 ];

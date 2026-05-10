@@ -72,6 +72,20 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
     lip: cfg.lipColor,
   });
 
+  // Ghost-specific material tweaks: cool faintly-translucent skin + a
+  // stronger iris emissive so the crimson eyes glow rather than sit flat.
+  if (cfg.isGhost) {
+    materials.skin.transparent = true;
+    materials.skin.opacity = 0.92;
+    materials.skin.roughness = 0.65;
+    materials.skin.emissive = new THREE.Color(0x6a7080);
+    materials.skin.emissiveIntensity = 0.35;
+    materials.skin.envMapIntensity = 0.35;
+
+    materials.iris.emissive = new THREE.Color(cfg.irisColor);
+    materials.iris.emissiveIntensity = 1.4;
+  }
+
   // Extra geometries/materials created for optional features, disposed alongside
   // the main ones.
   const xGeoms: THREE.BufferGeometry[] = [];
@@ -145,6 +159,11 @@ export function createAvatar(characterType: CharacterType = 'child'): AvatarRig 
   // ---- Hair -----------------------------------------------------------------
   const hair = buildHair(cfg, materials, xGeoms, xMats);
   head.add(hair);
+
+  // ---- Hat / headwear (police cap, etc.) -----------------------------------
+  if (cfg.hatStyle !== 'none') {
+    buildHat(head, cfg, xGeoms, xMats);
+  }
 
   // ---- Permanent blush (woman only) -----------------------------------------
   if (cfg.hasBlush) {
@@ -898,6 +917,263 @@ function buildHair(
       hair.add(m);
     }
 
+  } else if (cfg.hairStyle === 'youngmanmessy') {
+    // Tousled / messy young-man cut — cap with locks pointing in many
+    // directions to read as bedhead-cool. Distinct silhouette from the
+    // polished `youngmancool`.
+    const capGeom = new THREE.SphereGeometry(0.96, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.50);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.06, 0);
+    hair.add(cap);
+
+    const lockGeom = new THREE.CapsuleGeometry(0.075, 0.36, 12, 22);
+    xGeoms.push(lockGeom);
+
+    // [posX, posY, posZ, rotX, rotY, rotZ, sx, sy, sz]
+    const LOCKS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      // Front messy fringe — angles spread, several pointing forward
+      [-0.46, 0.92, 0.66,  0.95,  0.55,  0.40,  0.95, 1.00, 1.00],
+      [-0.20, 1.02, 0.74,  1.00,  0.10,  0.10,  1.05, 1.20, 1.05],
+      [ 0.05, 1.05, 0.76,  0.85, -0.05, -0.10,  1.10, 1.25, 1.05],
+      [ 0.30, 1.00, 0.70,  0.60, -0.30, -0.18,  0.95, 1.15, 1.00],
+      [ 0.52, 0.92, 0.60,  0.30, -0.55, -0.35,  0.85, 1.00, 0.95],
+      // Crown: locks fanning every which way
+      [-0.32, 1.10, 0.30,  0.05,  0.50,  0.55,  0.85, 1.00, 0.95],
+      [-0.05, 1.18, 0.34, -0.10,  0.15,  0.20,  0.95, 1.15, 1.00],
+      [ 0.18, 1.18, 0.32, -0.15, -0.10, -0.10,  0.95, 1.15, 1.00],
+      [ 0.40, 1.10, 0.26, -0.10, -0.45, -0.45,  0.85, 1.00, 0.95],
+      // Back / nape
+      [-0.18, 0.92, -0.42, -0.55,  0.20,  0.10,  0.85, 0.85, 0.85],
+      [ 0.08, 0.96, -0.46, -0.55,  0.00,  0.00,  0.95, 0.90, 0.90],
+      [ 0.28, 0.90, -0.42, -0.55, -0.25, -0.10,  0.85, 0.85, 0.85],
+      // Side wisps over ears
+      [-0.66, 0.55, 0.32,  0.40,  0.85,  0.65,  0.70, 0.75, 0.85],
+      [ 0.66, 0.55, 0.32,  0.40, -0.85, -0.65,  0.70, 0.75, 0.85],
+    ];
+    for (const r of LOCKS) {
+      const m = new THREE.Mesh(lockGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    if (cfg.hasHairHighlights) {
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0x7a4e30), 0.40);
+      const hlMat = new THREE.MeshStandardMaterial({
+        color: hlColor,
+        roughness: 0.36,
+        metalness: 0.05,
+      });
+      xMats.push(hlMat);
+      const hlGeom = new THREE.CapsuleGeometry(0.018, 0.26, 6, 14);
+      xGeoms.push(hlGeom);
+      const HL: Array<[number, number, number, number, number, number]> = [
+        [-0.10, 1.10, 0.70,  0.85,  0.10,  0.06],
+        [ 0.14, 1.12, 0.70,  0.80, -0.10, -0.04],
+        [ 0.00, 1.20, 0.36,  0.00,  0.00,  0.00],
+      ];
+      for (const h of HL) {
+        const m = new THREE.Mesh(hlGeom, hlMat);
+        m.position.set(h[0], h[1], h[2]);
+        m.rotation.set(h[3], h[4], h[5]);
+        hair.add(m);
+      }
+    }
+
+  } else if (cfg.hairStyle === 'womanbob') {
+    // Blunt shoulder-length bob with a clean straight fringe across the
+    // forehead. Distinct from `woman` (waist-length) and `girllong` (wavy).
+    // Cap covers the top of the head, then a "bell" of hair flares out and
+    // ends bluntly around the jawline.
+    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.50);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.05, 0);
+    hair.add(cap);
+
+    // Side bell — left + right, each a wide oval sphere reaching to the jaw.
+    const bellGeom = new THREE.SphereGeometry(0.30, 32, 24);
+    xGeoms.push(bellGeom);
+    for (const side of [-1, 1] as const) {
+      const b = new THREE.Mesh(bellGeom, materials.hair);
+      b.position.set(side * 0.62, -0.18, 0.06);
+      b.scale.set(1.32, 2.00, 1.10);
+      b.rotation.set(0, side * 0.05, side * -0.04);
+      hair.add(b);
+    }
+
+    // Back panel: rounded sheet covering the back of the head, ending at
+    // roughly the same level as the side bells (blunt cut).
+    const backGeom = new THREE.SphereGeometry(0.32, 28, 20);
+    xGeoms.push(backGeom);
+    const back = new THREE.Mesh(backGeom, materials.hair);
+    back.position.set(0, -0.18, -0.30);
+    back.scale.set(2.05, 1.95, 1.10);
+    hair.add(back);
+
+    // Blunt straight fringe across the forehead.
+    if (cfg.hasHairBangs) {
+      const bangGeom = new THREE.SphereGeometry(0.18, 24, 14);
+      xGeoms.push(bangGeom);
+      const bang = new THREE.Mesh(bangGeom, materials.hair);
+      bang.position.set(0, 0.42, 0.74);
+      bang.scale.set(2.50, 0.55, 0.36);
+      bang.rotation.set(-0.20, 0, 0);
+      hair.add(bang);
+
+      // Side wisps ending the fringe at the temples
+      for (const side of [-1, 1] as const) {
+        const w = new THREE.Mesh(bangGeom, materials.hair);
+        w.position.set(side * 0.42, 0.32, 0.72);
+        w.scale.set(0.85, 0.50, 0.30);
+        w.rotation.set(-0.12, side * 0.10, side * 0.04);
+        hair.add(w);
+      }
+    }
+
+  } else if (cfg.hairStyle === 'womanwave') {
+    // Side-parted wavy short hair that flares slightly outward at the ends.
+    // Sits between a bob and shoulder length. Distinguished from `womanbob`
+    // by an asymmetric volume (right side fuller) and softer wave geometry.
+    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.46);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.06, 0);
+    hair.add(cap);
+
+    // Side strands — right side has more pieces and outward wave
+    const strandGeom = new THREE.SphereGeometry(0.16, 24, 18);
+    xGeoms.push(strandGeom);
+
+    // RIGHT (voluminous wave side)
+    const RIGHT: Array<[number, number, number, number, number, number, number, number, number]> = [
+      [ 0.66, 0.30, 0.20,  0.00,  0.10, -0.10,  1.05, 1.30, 0.90 ],
+      [ 0.72, -0.10, 0.10, 0.04,  0.16, -0.18,  1.15, 1.55, 0.85 ],
+      [ 0.80, -0.55, 0.00, 0.10,  0.22, -0.30,  1.20, 1.50, 0.78 ],
+      [ 0.86, -0.95, -0.05, 0.16, 0.30, -0.42,  1.18, 1.20, 0.72 ],
+    ];
+    for (const r of RIGHT) {
+      const m = new THREE.Mesh(strandGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // LEFT (tucked side, less volume)
+    const LEFT: Array<[number, number, number, number, number, number, number, number, number]> = [
+      [-0.62, 0.32, 0.18, 0.00, -0.08,  0.10,  0.95, 1.20, 0.85 ],
+      [-0.66, -0.10, 0.10, 0.00, -0.12, 0.14,  1.05, 1.40, 0.80 ],
+      [-0.70, -0.55, 0.00, 0.04, -0.18, 0.20,  1.05, 1.30, 0.74 ],
+    ];
+    for (const r of LEFT) {
+      const m = new THREE.Mesh(strandGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // Back volume
+    const backGeom = new THREE.SphereGeometry(0.28, 24, 18);
+    xGeoms.push(backGeom);
+    const backTop = new THREE.Mesh(backGeom, materials.hair);
+    backTop.position.set(0.04, -0.05, -0.55);
+    backTop.scale.set(2.05, 1.65, 1.05);
+    hair.add(backTop);
+    const backMid = new THREE.Mesh(backGeom, materials.hair);
+    backMid.position.set(0.06, -0.65, -0.50);
+    backMid.scale.set(2.00, 1.65, 0.92);
+    hair.add(backMid);
+
+    // Side-swept front piece sweeping right-to-left over the brow
+    const sweepGeom = new THREE.SphereGeometry(0.16, 18, 12);
+    xGeoms.push(sweepGeom);
+    const sweep = new THREE.Mesh(sweepGeom, materials.hair);
+    sweep.position.set(-0.12, 0.40, 0.74);
+    sweep.scale.set(2.20, 0.50, 0.28);
+    sweep.rotation.set(-0.14, 0.10, -0.18);
+    hair.add(sweep);
+
+    if (cfg.hasHairHighlights) {
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0xb88860), 0.42);
+      const hlMat = new THREE.MeshStandardMaterial({ color: hlColor, roughness: 0.40, metalness: 0.02 });
+      xMats.push(hlMat);
+      const hlGeom = new THREE.SphereGeometry(0.05, 10, 8);
+      xGeoms.push(hlGeom);
+      // Streaks down the right wave + a left-side streak
+      const HL: Array<[number, number, number, number, number, number, number, number, number]> = [
+        [ 0.74, -0.15, 0.10, 0.00, 0.16, -0.18,  0.50, 4.0, 0.50 ],
+        [ 0.82, -0.60, 0.00, 0.00, 0.22, -0.30,  0.50, 3.5, 0.50 ],
+        [-0.66, -0.20, 0.10, 0.00,-0.12,  0.14,  0.50, 3.8, 0.50 ],
+      ];
+      for (const r of HL) {
+        const m = new THREE.Mesh(hlGeom, hlMat);
+        m.position.set(r[0], r[1], r[2]);
+        m.rotation.set(r[3], r[4], r[5]);
+        m.scale.set(r[6], r[7], r[8]);
+        hair.add(m);
+      }
+    }
+
+  } else if (cfg.hairStyle === 'ghost') {
+    // Spectral long stringy black hair: thin tendrils hanging well below the
+    // chin, plus a few strands draping over the forehead/eyes. A faint pale
+    // halo aura is added so the silhouette glows softly even when lit dimly.
+    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.04, 0);
+    hair.add(cap);
+
+    // Long stringy tendrils on each side (thin stretched ellipsoids)
+    const tendrilGeom = new THREE.SphereGeometry(0.10, 16, 14);
+    xGeoms.push(tendrilGeom);
+
+    // Spread tendrils around the head — front, sides, back. Many of them
+    // pass right over the forehead so the eyes peek through dramatically.
+    const TENDRILS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      // Front strands draping over the forehead/eyes
+      [-0.30, -0.10, 0.74,  0.00,  0.05,  0.12,  0.55, 7.0, 0.45 ],
+      [-0.05, -0.20, 0.78,  0.00,  0.00,  0.02,  0.55, 7.5, 0.45 ],
+      [ 0.20, -0.10, 0.76,  0.00, -0.05, -0.08,  0.55, 7.0, 0.45 ],
+      [ 0.40, -0.30, 0.72,  0.00, -0.10, -0.16,  0.55, 7.2, 0.45 ],
+      // Side curtains
+      [-0.66, -0.55, 0.20,  0.00,  0.08,  0.10,  0.85, 8.5, 0.55 ],
+      [-0.78, -0.85, 0.00,  0.04,  0.14,  0.16,  0.90, 8.0, 0.55 ],
+      [ 0.66, -0.55, 0.20,  0.00, -0.08, -0.10,  0.85, 8.5, 0.55 ],
+      [ 0.78, -0.85, 0.00,  0.04, -0.14, -0.16,  0.90, 8.0, 0.55 ],
+      // Back panel
+      [ 0.00, -0.70, -0.50, 0.00,  0.00,  0.00,  2.10, 8.0, 0.55 ],
+    ];
+    for (const r of TENDRILS) {
+      const m = new THREE.Mesh(tendrilGeom, materials.hair);
+      m.position.set(r[0], r[1], r[2]);
+      m.rotation.set(r[3], r[4], r[5]);
+      m.scale.set(r[6], r[7], r[8]);
+      hair.add(m);
+    }
+
+    // Faint pale halo aura — soft additive sphere larger than the head, so
+    // the silhouette has a ghostly glow. Uses a translucent ice-blue color.
+    if (cfg.isGhost) {
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: 0xc8d4ec,
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false,
+      });
+      xMats.push(haloMat);
+      const haloGeom = new THREE.SphereGeometry(1.18, 32, 32);
+      xGeoms.push(haloGeom);
+      const halo = new THREE.Mesh(haloGeom, haloMat);
+      halo.position.set(0, -0.05, 0);
+      halo.scale.set(1.08, 1.18, 1.05);
+      hair.add(halo);
+    }
+
   } else {
     // grandpa: just side wisps — no full cap on top (shows skin through).
     const wispGeom = new THREE.SphereGeometry(0.18, 12, 12);
@@ -1411,4 +1687,99 @@ function buildWrinkles(
     fold.rotation.set(-0.12, side * 0.52, side * 1.28);
     head.add(fold);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Hat / headwear (driver's peaked cap, etc.)
+// ---------------------------------------------------------------------------
+
+function buildHat(
+  head: THREE.Group,
+  cfg: CharacterConfig,
+  xGeoms: THREE.BufferGeometry[],
+  xMats: THREE.Material[],
+) {
+  if (cfg.hatStyle !== 'driver') return;
+
+  // Navy chauffeur / taxi-driver peaked cap. Built from:
+  //   1. cylindrical band that wraps the lower crown
+  //   2. flat-topped dome forming the upper crown
+  //   3. forward-tilted oval visor (peak)
+  //   4. silver button emblem on the front of the crown
+  // Sized to clear the skull (~y > 0.95) and rest just above the hairline.
+  const navy = 0x1a2440;
+  const black = 0x0a0a10;
+  const silver = 0xcdd2dc;
+
+  const capMat = new THREE.MeshStandardMaterial({
+    color: navy,
+    roughness: 0.55,
+    metalness: 0.10,
+    envMapIntensity: 0.55,
+  });
+  const visorMat = new THREE.MeshStandardMaterial({
+    color: black,
+    roughness: 0.30,
+    metalness: 0.25,
+    envMapIntensity: 0.85,
+  });
+  const emblemMat = new THREE.MeshStandardMaterial({
+    color: silver,
+    roughness: 0.25,
+    metalness: 0.85,
+    envMapIntensity: 1.1,
+  });
+  xMats.push(capMat, visorMat, emblemMat);
+
+  // --- Lower band (cylindrical strip wrapping the crown) ---
+  const bandGeom = new THREE.CylinderGeometry(0.78, 0.80, 0.18, 48, 1, true);
+  xGeoms.push(bandGeom);
+  const band = new THREE.Mesh(bandGeom, capMat);
+  band.position.set(0, 1.05, 0.0);
+  head.add(band);
+
+  // --- Upper crown (flat-topped dome). A short cylinder with a slight
+  // radial taper outward at the top gives the iconic peaked-cap silhouette
+  // (wider at the top than the band), so we stack a wider disk on top.
+  const crownSideGeom = new THREE.CylinderGeometry(0.92, 0.78, 0.20, 56, 1, true);
+  xGeoms.push(crownSideGeom);
+  const crownSide = new THREE.Mesh(crownSideGeom, capMat);
+  crownSide.position.set(0, 1.24, 0.0);
+  head.add(crownSide);
+
+  // Flat top disk
+  const crownTopGeom = new THREE.CircleGeometry(0.92, 56);
+  xGeoms.push(crownTopGeom);
+  const crownTop = new THREE.Mesh(crownTopGeom, capMat);
+  crownTop.position.set(0, 1.34, 0.0);
+  crownTop.rotation.x = -Math.PI / 2;
+  head.add(crownTop);
+
+  // --- Visor (peaked brim) — flat oval tilted slightly downward, jutting
+  // forward over the forehead. Built from a stretched cylinder cap.
+  const visorGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.04, 48, 1, false);
+  xGeoms.push(visorGeom);
+  const visor = new THREE.Mesh(visorGeom, visorMat);
+  // Position: front of head, just below the band so it sits like a brim
+  visor.position.set(0, 0.97, 0.62);
+  visor.rotation.set(-1.05, 0, 0); // tilt forward and downward
+  visor.scale.set(1.45, 1.0, 0.85); // wider than tall, shallow disk
+  head.add(visor);
+
+  // --- Silver round emblem / button on the front of the crown ---
+  const emblemGeom = new THREE.CylinderGeometry(0.10, 0.10, 0.025, 24);
+  xGeoms.push(emblemGeom);
+  const emblem = new THREE.Mesh(emblemGeom, emblemMat);
+  emblem.position.set(0, 1.20, 0.78);
+  emblem.rotation.x = Math.PI / 2;
+  head.add(emblem);
+
+  // Inner darker ring on the emblem so it reads as a real metal button
+  const emblemRingGeom = new THREE.RingGeometry(0.058, 0.080, 28);
+  xGeoms.push(emblemRingGeom);
+  const emblemRingMat = new THREE.MeshBasicMaterial({ color: 0x6a7080 });
+  xMats.push(emblemRingMat);
+  const emblemRing = new THREE.Mesh(emblemRingGeom, emblemRingMat);
+  emblemRing.position.set(0, 1.20, 0.795);
+  head.add(emblemRing);
 }
