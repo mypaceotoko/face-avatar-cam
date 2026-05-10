@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImageSegmenter, FilesetResolver } from '@mediapipe/tasks-vision';
 
-// Multiclass selfie segmenter — separates background / hair / body-skin /
-// face-skin / clothes / accessories. We combine all foreground classes into
-// a single confidence mask, which gives noticeably tighter hair/clothing
-// boundaries than the single-mask "selfie_segmenter" model. Floats are
-// smoothly upsampled in the shader so the edges look clean even at 1080p.
+// Lightweight selfie segmenter (256×256, float16) — fast on mobile GPUs.
+// We pull confidence (not category) so we get smooth edges instead of a
+// stair-stepped binary mask. A CPU-side temporal EMA smooths frame-to-frame
+// jitter so the silhouette feels stable / sharp rather than wobbly.
 const WASM_BASE =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite';
+  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
+
+// Temporal smoothing weight for the *new* frame. 0.65 = blend 65% new with
+// 35% previous frame. Higher = more responsive but more flicker; lower =
+// silkier but laggier. 0.65 is a good "snappy + stable" balance.
+const TEMPORAL_ALPHA = 0.65;
 
 export type SegmenterStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -48,6 +52,11 @@ export function useSegmenter(
     let raf = 0;
     let cancelled = false;
     let lastVideoTime = -1;
+    // Persistent EMA buffer for temporal smoothing — re-allocated only when
+    // the mask resolution changes.
+    let prevMask: Float32Array | null = null;
+    let prevW = 0;
+    let prevH = 0;
 
     (async () => {
       setStatus('loading');
@@ -82,24 +91,31 @@ export function useSegmenter(
           lastVideoTime = video.currentTime;
           try {
             segmenter.segmentForVideo(video, performance.now(), (result) => {
-              const masks = result.confidenceMasks;
-              if (!masks || masks.length === 0) return;
-              // Multiclass returns one confidence mask per class
-              // (0=bg, 1=hair, 2=body-skin, 3=face-skin, 4=clothes, 5=others).
-              // Foreground confidence = 1 - background. This is more accurate
-              // than thresholding the categoryMask because it preserves
-              // per-pixel sub-class confidences at fuzzy boundaries (hair tips,
-              // finger silhouettes).
-              const bg = masks[0];
-              const w = bg.width;
-              const h = bg.height;
-              const bgArr = bg.getAsFloat32Array();
-              const fg = new Float32Array(bgArr.length);
-              for (let i = 0; i < bgArr.length; i++) {
-                fg[i] = 1 - bgArr[i];
+              const mask = result.confidenceMasks?.[0];
+              if (!mask) return;
+              const w = mask.width;
+              const h = mask.height;
+              const arr = mask.getAsFloat32Array();
+              // Allocate / reset the EMA buffer when the mask resolution
+              // changes (e.g. camera switch).
+              if (!prevMask || prevW !== w || prevH !== h) {
+                prevMask = new Float32Array(arr); // seed with first frame
+                prevW = w;
+                prevH = h;
+              }
+              // Temporal EMA: out = α·new + (1−α)·prev. Reduces frame-to-frame
+              // boundary wobble — stable silhouette reads as sharper than a
+              // jittery one even when single-frame sharpness is identical.
+              const a = TEMPORAL_ALPHA;
+              const inv = 1 - a;
+              const out = new Float32Array(arr.length);
+              for (let i = 0; i < arr.length; i++) {
+                const v = a * arr[i] + inv * prevMask[i];
+                out[i] = v;
+                prevMask[i] = v;
               }
               maskRef.current = {
-                data: fg,
+                data: out,
                 width: w,
                 height: h,
                 frameId: maskRef.current.frameId + 1,
@@ -119,6 +135,7 @@ export function useSegmenter(
       if (raf) cancelAnimationFrame(raf);
       segmenter?.close();
       segmenter = null;
+      prevMask = null;
       maskRef.current = { data: null, width: 0, height: 0, frameId: 0 };
     };
   }, [active, enabled, videoRef]);
