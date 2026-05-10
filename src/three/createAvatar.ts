@@ -923,39 +923,69 @@ function buildHair(
       hair.add(m);
     }
 
-  } else if (cfg.hairStyle === 'youngmanmessy') {
-    // Tousled / messy young-man cut — cap with locks pointing in many
-    // directions to read as bedhead-cool. Distinct silhouette from the
-    // polished `youngmancool`.
-    const capGeom = new THREE.SphereGeometry(0.96, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.50);
+  } else if (cfg.hairStyle === 'youngmanfresh') {
+    // 爽やか young-man cut — relaxed natural-volume hair with a soft center
+    // part. Hair flows down both sides of the forehead from the part rather
+    // than spiking up, and the silhouette is rounder/lighter than the
+    // sleek-back `youngmancool` so the two read as obviously different
+    // people. Glossy medium-chestnut color (set on the cfg) reinforces the
+    // "fresh / breezy" feel vs the jet-black `youngmancool`.
+
+    // Base cap — slightly oversized so the hair has bounce on top.
+    const capGeom = new THREE.SphereGeometry(0.96, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.48);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
     cap.position.set(0, 0.06, 0);
     hair.add(cap);
 
-    const lockGeom = new THREE.CapsuleGeometry(0.075, 0.36, 12, 22);
+    // Center-parted forelock: two soft lobes flowing from the part outward
+    // toward the temples — defining "natural / 流し前髪" feature.
+    const partGeom = new THREE.SphereGeometry(0.16, 28, 20);
+    xGeoms.push(partGeom);
+    for (const side of [-1, 1] as const) {
+      const lobe = new THREE.Mesh(partGeom, materials.hair);
+      lobe.position.set(side * 0.16, 0.42, 0.74);
+      lobe.scale.set(1.55, 0.55, 0.34);
+      lobe.rotation.set(-0.20, side * 0.18, side * -0.14);
+      hair.add(lobe);
+    }
+
+    // Side temple wisps — longer wavy locks flowing back from the temples,
+    // softer than `youngmancool`'s sleek tapered sides.
+    const tempGeom = new THREE.SphereGeometry(0.13, 18, 14);
+    xGeoms.push(tempGeom);
+    for (const side of [-1, 1] as const) {
+      const w = new THREE.Mesh(tempGeom, materials.hair);
+      w.position.set(side * 0.48, 0.30, 0.64);
+      w.scale.set(1.00, 0.80, 0.34);
+      w.rotation.set(-0.06, side * 0.22, side * 0.12);
+      hair.add(w);
+    }
+
+    // Soft volume locks on top — relaxed (not spiky), gently curved
+    const lockGeom = new THREE.CapsuleGeometry(0.072, 0.30, 12, 22);
     xGeoms.push(lockGeom);
 
     // [posX, posY, posZ, rotX, rotY, rotZ, sx, sy, sz]
     const LOCKS: Array<[number, number, number, number, number, number, number, number, number]> = [
-      // Front messy fringe — angles spread, several pointing forward
-      [-0.46, 0.92, 0.66,  0.95,  0.55,  0.40,  0.95, 1.00, 1.00],
-      [-0.20, 1.02, 0.74,  1.00,  0.10,  0.10,  1.05, 1.20, 1.05],
-      [ 0.05, 1.05, 0.76,  0.85, -0.05, -0.10,  1.10, 1.25, 1.05],
-      [ 0.30, 1.00, 0.70,  0.60, -0.30, -0.18,  0.95, 1.15, 1.00],
-      [ 0.52, 0.92, 0.60,  0.30, -0.55, -0.35,  0.85, 1.00, 0.95],
-      // Crown: locks fanning every which way
-      [-0.32, 1.10, 0.30,  0.05,  0.50,  0.55,  0.85, 1.00, 0.95],
-      [-0.05, 1.18, 0.34, -0.10,  0.15,  0.20,  0.95, 1.15, 1.00],
-      [ 0.18, 1.18, 0.32, -0.15, -0.10, -0.10,  0.95, 1.15, 1.00],
-      [ 0.40, 1.10, 0.26, -0.10, -0.45, -0.45,  0.85, 1.00, 0.95],
-      // Back / nape
-      [-0.18, 0.92, -0.42, -0.55,  0.20,  0.10,  0.85, 0.85, 0.85],
-      [ 0.08, 0.96, -0.46, -0.55,  0.00,  0.00,  0.95, 0.90, 0.90],
-      [ 0.28, 0.90, -0.42, -0.55, -0.25, -0.10,  0.85, 0.85, 0.85],
-      // Side wisps over ears
-      [-0.66, 0.55, 0.32,  0.40,  0.85,  0.65,  0.70, 0.75, 0.85],
-      [ 0.66, 0.55, 0.32,  0.40, -0.85, -0.65,  0.70, 0.75, 0.85],
+      // Front row — gentle forward bend, sides flow outward from the part
+      [-0.34, 0.96, 0.62,  0.55,  0.45,  0.30,  1.00, 1.05, 1.00],
+      [-0.10, 1.02, 0.66,  0.50,  0.18,  0.12,  1.05, 1.10, 1.00],
+      [ 0.10, 1.02, 0.66,  0.50, -0.18, -0.12,  1.05, 1.10, 1.00],
+      [ 0.34, 0.96, 0.62,  0.55, -0.45, -0.30,  1.00, 1.05, 1.00],
+      // Mid-crown — softly arching locks with subtle volume
+      [-0.30, 1.10, 0.32,  0.10,  0.40,  0.30,  0.95, 1.05, 0.95],
+      [-0.06, 1.14, 0.34,  0.06,  0.10,  0.04,  1.00, 1.15, 1.00],
+      [ 0.18, 1.14, 0.34,  0.06, -0.10, -0.04,  1.00, 1.15, 1.00],
+      [ 0.42, 1.08, 0.30,  0.10, -0.40, -0.30,  0.95, 1.05, 0.95],
+      // Crown back — laid back smoothly
+      [-0.22, 1.08,  0.04, -0.18,  0.30,  0.18,  0.95, 1.00, 0.95],
+      [ 0.04, 1.10,  0.04, -0.20,  0.00,  0.00,  1.00, 1.10, 1.00],
+      [ 0.26, 1.08,  0.04, -0.18, -0.30, -0.18,  0.95, 1.00, 0.95],
+      // Nape — short and clean
+      [-0.20, 0.86, -0.40, -0.55,  0.20,  0.10,  0.85, 0.85, 0.85],
+      [ 0.04, 0.90, -0.45, -0.58,  0.00,  0.00,  0.95, 0.90, 0.90],
+      [ 0.24, 0.86, -0.40, -0.55, -0.20, -0.10,  0.85, 0.85, 0.85],
     ];
     for (const r of LOCKS) {
       const m = new THREE.Mesh(lockGeom, materials.hair);
@@ -965,20 +995,36 @@ function buildHair(
       hair.add(m);
     }
 
+    // Tapered sides — softer dome over the ears (less aggressive taper
+    // than `youngmancool`).
+    const sideGeom = new THREE.SphereGeometry(0.36, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    xGeoms.push(sideGeom);
+    for (const side of [-1, 1] as const) {
+      const s = new THREE.Mesh(sideGeom, materials.hair);
+      s.position.set(side * 0.66, 0.30, 0.06);
+      s.scale.set(0.60, 0.95, 0.85);
+      s.rotation.set(0, side * 0.18, side * -0.06);
+      hair.add(s);
+    }
+
+    // Bright caramel highlight streaks — reinforce the "明るい爽やか" feel.
     if (cfg.hasHairHighlights) {
-      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0x7a4e30), 0.40);
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0xd4a070), 0.45);
       const hlMat = new THREE.MeshStandardMaterial({
         color: hlColor,
-        roughness: 0.36,
-        metalness: 0.05,
+        roughness: 0.32,
+        metalness: 0.06,
+        emissive: hlColor.clone().multiplyScalar(0.05),
+        emissiveIntensity: 0.4,
       });
       xMats.push(hlMat);
-      const hlGeom = new THREE.CapsuleGeometry(0.018, 0.26, 6, 14);
+      const hlGeom = new THREE.CapsuleGeometry(0.016, 0.26, 6, 14);
       xGeoms.push(hlGeom);
       const HL: Array<[number, number, number, number, number, number]> = [
-        [-0.10, 1.10, 0.70,  0.85,  0.10,  0.06],
-        [ 0.14, 1.12, 0.70,  0.80, -0.10, -0.04],
-        [ 0.00, 1.20, 0.36,  0.00,  0.00,  0.00],
+        [-0.18, 1.04, 0.62,  0.55,  0.30,  0.20],
+        [ 0.18, 1.04, 0.62,  0.55, -0.30, -0.20],
+        [-0.04, 1.16, 0.32,  0.05,  0.04,  0.02],
+        [ 0.18, 1.14, 0.32,  0.05, -0.10, -0.04],
       ];
       for (const h of HL) {
         const m = new THREE.Mesh(hlGeom, hlMat);
@@ -1039,81 +1085,103 @@ function buildHair(
       }
     }
 
-  } else if (cfg.hairStyle === 'womanwave') {
-    // Side-parted wavy short hair that flares slightly outward at the ends.
-    // Sits between a bob and shoulder length. Distinguished from `womanbob`
-    // by an asymmetric volume (right side fuller) and softer wave geometry.
-    const capGeom = new THREE.SphereGeometry(0.97, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.46);
+  } else if (cfg.hairStyle === 'womanchic') {
+    // Sleek shoulder-length lob with a deep side parting. Length sits at
+    // upper-chest level — clearly longer than `womanbob` (jawline) and
+    // shorter than `woman` (waist). Glossy, almost ironed-straight, with
+    // a strong asymmetric front sweep that frames the face. Reads as
+    // "polished adult woman" in contrast to the youthful long-wave `girl`.
+
+    // Top cap with a shallower theta so the deep side part is implied.
+    const capGeom = new THREE.SphereGeometry(0.972, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.42);
     xGeoms.push(capGeom);
     const cap = new THREE.Mesh(capGeom, materials.hair);
     cap.position.set(0, 0.06, 0);
     hair.add(cap);
 
-    // Side strands — right side has more pieces and outward wave
-    const strandGeom = new THREE.SphereGeometry(0.16, 24, 18);
-    xGeoms.push(strandGeom);
+    // Stacked side curtains (left and right, mirrored, with a pronounced
+    // asymmetry: right side fuller because the part is deep on the left).
+    const curtainGeom = new THREE.SphereGeometry(0.18, 28, 22);
+    xGeoms.push(curtainGeom);
 
-    // RIGHT (voluminous wave side)
+    // RIGHT side (voluminous, longer reach)
     const RIGHT: Array<[number, number, number, number, number, number, number, number, number]> = [
-      [ 0.66, 0.30, 0.20,  0.00,  0.10, -0.10,  1.05, 1.30, 0.90 ],
-      [ 0.72, -0.10, 0.10, 0.04,  0.16, -0.18,  1.15, 1.55, 0.85 ],
-      [ 0.80, -0.55, 0.00, 0.10,  0.22, -0.30,  1.20, 1.50, 0.78 ],
-      [ 0.86, -0.95, -0.05, 0.16, 0.30, -0.42,  1.18, 1.20, 0.72 ],
+      [ 0.66, 0.30, 0.18,  0.00,  0.06, -0.06,  1.20, 1.80, 0.55 ],
+      [ 0.72, -0.30, 0.10, 0.00,  0.10, -0.10,  1.30, 2.40, 0.55 ],
+      [ 0.78, -0.95, 0.00, 0.04,  0.16, -0.18,  1.30, 2.20, 0.55 ],
     ];
     for (const r of RIGHT) {
-      const m = new THREE.Mesh(strandGeom, materials.hair);
+      const m = new THREE.Mesh(curtainGeom, materials.hair);
       m.position.set(r[0], r[1], r[2]);
       m.rotation.set(r[3], r[4], r[5]);
       m.scale.set(r[6], r[7], r[8]);
       hair.add(m);
     }
 
-    // LEFT (tucked side, less volume)
+    // LEFT side (tucked side from the deep part, slightly shorter)
     const LEFT: Array<[number, number, number, number, number, number, number, number, number]> = [
-      [-0.62, 0.32, 0.18, 0.00, -0.08,  0.10,  0.95, 1.20, 0.85 ],
-      [-0.66, -0.10, 0.10, 0.00, -0.12, 0.14,  1.05, 1.40, 0.80 ],
-      [-0.70, -0.55, 0.00, 0.04, -0.18, 0.20,  1.05, 1.30, 0.74 ],
+      [-0.62, 0.32, 0.16, 0.00, -0.04,  0.06,  1.10, 1.75, 0.55 ],
+      [-0.66, -0.30, 0.08, 0.00, -0.08,  0.10,  1.18, 2.30, 0.55 ],
+      [-0.70, -0.90, 0.00, 0.02, -0.12,  0.14,  1.18, 2.05, 0.50 ],
     ];
     for (const r of LEFT) {
-      const m = new THREE.Mesh(strandGeom, materials.hair);
+      const m = new THREE.Mesh(curtainGeom, materials.hair);
       m.position.set(r[0], r[1], r[2]);
       m.rotation.set(r[3], r[4], r[5]);
       m.scale.set(r[6], r[7], r[8]);
       hair.add(m);
     }
 
-    // Back volume
-    const backGeom = new THREE.SphereGeometry(0.28, 24, 18);
+    // Back panel — wide rounded sheet. Two stacked spheres for length.
+    const backGeom = new THREE.SphereGeometry(0.30, 28, 20);
     xGeoms.push(backGeom);
     const backTop = new THREE.Mesh(backGeom, materials.hair);
-    backTop.position.set(0.04, -0.05, -0.55);
-    backTop.scale.set(2.05, 1.65, 1.05);
+    backTop.position.set(0.02, -0.10, -0.50);
+    backTop.scale.set(2.20, 1.95, 1.10);
     hair.add(backTop);
-    const backMid = new THREE.Mesh(backGeom, materials.hair);
-    backMid.position.set(0.06, -0.65, -0.50);
-    backMid.scale.set(2.00, 1.65, 0.92);
-    hair.add(backMid);
+    const backLow = new THREE.Mesh(backGeom, materials.hair);
+    backLow.position.set(0.02, -1.00, -0.42);
+    backLow.scale.set(2.10, 1.85, 0.95);
+    hair.add(backLow);
 
-    // Side-swept front piece sweeping right-to-left over the brow
-    const sweepGeom = new THREE.SphereGeometry(0.16, 18, 12);
+    // Asymmetric front sweep: a long bang piece flowing right-to-left
+    // across the forehead from the deep-part. Reads as the signature
+    // "オトナの斜め前髪" detail.
+    const sweepGeom = new THREE.SphereGeometry(0.17, 22, 14);
     xGeoms.push(sweepGeom);
     const sweep = new THREE.Mesh(sweepGeom, materials.hair);
-    sweep.position.set(-0.12, 0.40, 0.74);
-    sweep.scale.set(2.20, 0.50, 0.28);
-    sweep.rotation.set(-0.14, 0.10, -0.18);
+    sweep.position.set(-0.18, 0.42, 0.75);
+    sweep.scale.set(2.55, 0.50, 0.32);
+    sweep.rotation.set(-0.16, 0.12, -0.20);
     hair.add(sweep);
 
+    // Subtle wisp dropping at the right temple — softens the silhouette.
+    const wispGeom = new THREE.SphereGeometry(0.10, 14, 10);
+    xGeoms.push(wispGeom);
+    const wisp = new THREE.Mesh(wispGeom, materials.hair);
+    wisp.position.set(0.42, 0.32, 0.72);
+    wisp.scale.set(0.85, 0.52, 0.28);
+    wisp.rotation.set(-0.12, -0.12, 0.10);
+    hair.add(wisp);
+
+    // Glossy warm-brown highlight streaks running down both side curtains.
     if (cfg.hasHairHighlights) {
-      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0xb88860), 0.42);
-      const hlMat = new THREE.MeshStandardMaterial({ color: hlColor, roughness: 0.40, metalness: 0.02 });
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0x8a5230), 0.40);
+      const hlMat = new THREE.MeshStandardMaterial({
+        color: hlColor,
+        roughness: 0.34,
+        metalness: 0.06,
+        emissive: hlColor.clone().multiplyScalar(0.05),
+        emissiveIntensity: 0.4,
+      });
       xMats.push(hlMat);
       const hlGeom = new THREE.SphereGeometry(0.05, 10, 8);
       xGeoms.push(hlGeom);
-      // Streaks down the right wave + a left-side streak
       const HL: Array<[number, number, number, number, number, number, number, number, number]> = [
-        [ 0.74, -0.15, 0.10, 0.00, 0.16, -0.18,  0.50, 4.0, 0.50 ],
-        [ 0.82, -0.60, 0.00, 0.00, 0.22, -0.30,  0.50, 3.5, 0.50 ],
-        [-0.66, -0.20, 0.10, 0.00,-0.12,  0.14,  0.50, 3.8, 0.50 ],
+        [ 0.72, -0.30, 0.10, 0.00,  0.10, -0.10,  0.45, 3.20, 0.50 ],
+        [ 0.78, -0.90, 0.02, 0.02,  0.16, -0.18,  0.45, 2.80, 0.50 ],
+        [-0.64, -0.30, 0.10, 0.00, -0.08,  0.10,  0.45, 3.10, 0.50 ],
+        [-0.68, -0.85, 0.02, 0.02, -0.12,  0.14,  0.45, 2.60, 0.50 ],
       ];
       for (const r of HL) {
         const m = new THREE.Mesh(hlGeom, hlMat);

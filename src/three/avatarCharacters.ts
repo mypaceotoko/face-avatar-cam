@@ -65,11 +65,11 @@ export interface CharacterConfig {
     | 'child'
     | 'boyswept'
     | 'youngmancool'
-    | 'youngmanmessy'
+    | 'youngmanfresh'
     | 'girllong'
     | 'woman'
     | 'womanbob'
-    | 'womanwave'
+    | 'womanchic'
     | 'man'
     | 'grandpa'
     | 'ghost'
@@ -607,13 +607,13 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     cheekOffsetX: 0.49,
     cheekOffsetY: -0.14,
     cheekOffsetZ: 0.62,
-    skinColor: 0xeab68a,        // warm tan, slightly darker than youngman
-    cheekColor: 0xd07c66,
-    hairColor: 0x281a12,        // deep warm chocolate
-    irisColor: 0x3a2010,
-    lipColor: 0xb86658,
-    browColor: 0x281a12,
-    hairStyle: 'youngmanmessy',
+    skinColor: 0xf6cda3,        // bright fresh peach — healthier than youngman1
+    cheekColor: 0xea9682,
+    hairColor: 0x6e4828,        // light warm chestnut (爽やか / clearly lighter)
+    irisColor: 0x4a2c14,
+    lipColor: 0xc07868,
+    browColor: 0x6e4828,
+    hairStyle: 'youngmanfresh',
     hasLashes: false,
     hasBlush: false,
     blushColor: 0xff9985,
@@ -622,9 +622,9 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     hasHairBangs: false,
     hasHairHighlights: true,
     hasEyeAccents: true,
-    hasBeard: true,
+    hasBeard: false,
     beardColor: 0x1a1008,
-    beardStyle: 'stubble',
+    beardStyle: 'none',
     hasGlasses: false,
     hasWrinkles: false,
     hatStyle: 'none',
@@ -766,49 +766,53 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // ===========================================================================
   womanC: {
     labelJa: '女性3',
-    headScaleX: 0.97,
-    headScaleY: 1.05,
-    headScaleZ: 0.96,
-    eyeRadius: 0.240,
-    eyeOffsetX: 0.300,
-    eyeOffsetY: 0.090,
+    // Slimmer, slightly elongated head — reads grown-up vs `少女`'s round face
+    headScaleX: 0.94,
+    headScaleY: 1.07,
+    headScaleZ: 0.94,
+    // Refined eyes — narrower and a touch smaller for a sophisticated look
+    eyeRadius: 0.225,
+    eyeOffsetX: 0.298,
+    eyeOffsetY: 0.088,
     eyeZ: 0.770,
-    irisRadius: 0.162,
-    browWidth: 0.27,
-    browHeight: 0.046,
-    browDepth: 0.054,
-    browOffsetX: 0.300,
-    browOffsetY: 0.382,
-    browOffsetZ: 0.812,
-    browRotY: 0.15,
-    browRotZInner: 0.07,
-    noseRadius: 0.050,
-    noseOffsetY: -0.068,
-    noseZ: 0.940,
-    noseScaleX: 0.82,
-    noseScaleY: 0.88,
-    noseScaleZ: 0.70,
+    irisRadius: 0.150,
+    // Thin elegant brows — clearer arch, narrower than the youthful ones
+    browWidth: 0.25,
+    browHeight: 0.038,
+    browDepth: 0.046,
+    browOffsetX: 0.298,
+    browOffsetY: 0.388,
+    browOffsetZ: 0.815,
+    browRotY: 0.16,
+    browRotZInner: 0.10,
+    noseRadius: 0.046,
+    noseOffsetY: -0.072,
+    noseZ: 0.938,
+    noseScaleX: 0.78,
+    noseScaleY: 0.86,
+    noseScaleZ: 0.66,
     earRadius: 0.10,
-    earOffsetX: 0.87,
-    mouthOffsetY: -0.314,
-    mouthOffsetZ: 0.832,
-    lipTorusRadius: 0.138,
-    lipTubeRadius: 0.040,
-    cheekRadius: 0.20,
-    cheekOffsetX: 0.44,
-    cheekOffsetY: -0.10,
-    cheekOffsetZ: 0.68,
-    skinColor: 0xf3c89c,        // warm light peach
-    cheekColor: 0xeb8f7c,
-    hairColor: 0x4a2818,        // warm auburn
-    irisColor: 0x4a2814,
-    lipColor: 0xb05868,
-    browColor: 0x4a2818,
-    hairStyle: 'womanwave',
+    earOffsetX: 0.85,
+    mouthOffsetY: -0.310,
+    mouthOffsetZ: 0.833,
+    lipTorusRadius: 0.140,
+    lipTubeRadius: 0.042,
+    // High narrow cheekbones (positioned higher → more refined silhouette)
+    cheekRadius: 0.18,
+    cheekOffsetX: 0.43,
+    cheekOffsetY: -0.07,
+    cheekOffsetZ: 0.69,
+    skinColor: 0xf6d2ae,        // cool porcelain peach (less yellow than 少女)
+    cheekColor: 0xe08070,
+    hairColor: 0x281610,        // deep glossy brunette
+    irisColor: 0x3a1d10,
+    lipColor: 0x9a3e4e,         // mature berry / wine
+    browColor: 0x281610,
+    hairStyle: 'womanchic',
     hasLashes: true,
-    hasBlush: true,
-    blushColor: 0xff9685,
-    hasEyeMakeup: false,
+    hasBlush: false,            // mature look — relies on lip + makeup, not blush
+    blushColor: 0xe08070,
+    hasEyeMakeup: true,         // subtle shadow + liner for adult presence
     hasLipGloss: true,
     hasHairBangs: false,
     hasHairHighlights: true,
