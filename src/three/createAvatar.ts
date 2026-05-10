@@ -530,6 +530,12 @@ function buildHair(
   const hair = new THREE.Group();
   hair.name = 'hair';
 
+  // Early-out: characters whose entire scalp is covered by a hat use
+  // 'none' so no locks poke through the headwear.
+  if (cfg.hairStyle === 'none') {
+    return hair;
+  }
+
   if (cfg.hairStyle === 'child') {
     const capGeom = new THREE.SphereGeometry(0.94, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.55);
     xGeoms.push(capGeom);

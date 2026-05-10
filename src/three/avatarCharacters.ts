@@ -72,7 +72,8 @@ export interface CharacterConfig {
     | 'womanwave'
     | 'man'
     | 'grandpa'
-    | 'ghost';
+    | 'ghost'
+    | 'none';
   // Hat / headwear (police cap, etc.)
   hatStyle: 'none' | 'driver';
   // Ghost-specific overrides (translucent skin, halo aura, glowing eyes)
@@ -676,7 +677,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     irisColor: 0x2e1a0c,
     lipColor: 0xb86a5c,
     browColor: 0x140e0a,
-    hairStyle: 'youngmancool',  // visible side hair below the cap
+    hairStyle: 'none',          // hat fully covers — no hair beneath
     hasLashes: false,
     hasBlush: false,
     blushColor: 0xff9985,
