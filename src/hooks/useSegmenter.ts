@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImageSegmenter, FilesetResolver } from '@mediapipe/tasks-vision';
 
-// Selfie segmenter: 1 confidence mask (0..1) marking person vs. background.
-// We pull confidence (not category) so we get smooth edges instead of a
-// stair-stepped binary mask, which makes the green-screen edge look much
-// closer to a real chroma key.
+// Multiclass selfie segmenter — separates background / hair / body-skin /
+// face-skin / clothes / accessories. We combine all foreground classes into
+// a single confidence mask, which gives noticeably tighter hair/clothing
+// boundaries than the single-mask "selfie_segmenter" model. Floats are
+// smoothly upsampled in the shader so the edges look clean even at 1080p.
 const WASM_BASE =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
+  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite';
 
 export type SegmenterStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -81,16 +82,26 @@ export function useSegmenter(
           lastVideoTime = video.currentTime;
           try {
             segmenter.segmentForVideo(video, performance.now(), (result) => {
-              const mask = result.confidenceMasks?.[0];
-              if (!mask) return;
-              // Copy the float buffer because MediaPipe will reuse it on the
-              // next call once the callback returns.
-              const arr = mask.getAsFloat32Array();
-              const copy = new Float32Array(arr);
+              const masks = result.confidenceMasks;
+              if (!masks || masks.length === 0) return;
+              // Multiclass returns one confidence mask per class
+              // (0=bg, 1=hair, 2=body-skin, 3=face-skin, 4=clothes, 5=others).
+              // Foreground confidence = 1 - background. This is more accurate
+              // than thresholding the categoryMask because it preserves
+              // per-pixel sub-class confidences at fuzzy boundaries (hair tips,
+              // finger silhouettes).
+              const bg = masks[0];
+              const w = bg.width;
+              const h = bg.height;
+              const bgArr = bg.getAsFloat32Array();
+              const fg = new Float32Array(bgArr.length);
+              for (let i = 0; i < bgArr.length; i++) {
+                fg[i] = 1 - bgArr[i];
+              }
               maskRef.current = {
-                data: copy,
-                width: mask.width,
-                height: mask.height,
+                data: fg,
+                width: w,
+                height: h,
                 frameId: maskRef.current.frameId + 1,
               };
             });
