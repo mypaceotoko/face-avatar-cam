@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CHARACTER_ORDER, CHARACTERS, type CharacterType } from '../three/avatarCharacters';
 import {
   CAMERA_MODE_LABEL,
@@ -59,21 +60,60 @@ export function ControlPanel({
   onCharacterChange,
 }: Props) {
   const cameraCycleDisabled = availableCameraModes.length <= 1;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const currentLabel = CHARACTERS[characterType].labelJa;
   return (
     <div className="controls">
-      {/* Face / character selector — always visible so users can browse
-          characters before or after starting the camera. */}
-      <div className="face-selector">
-        {CHARACTER_ORDER.map((type) => (
-          <button
-            key={type}
-            className={`btn btn--face ${characterType === type ? 'btn--face-active' : ''}`}
-            onClick={() => onCharacterChange(type)}
+      {/* Single trigger button — opens a modal grid picker. Keeps the
+          control bar compact regardless of how many avatars are available. */}
+      <button
+        className="btn btn--face-trigger"
+        onClick={() => setPickerOpen(true)}
+        aria-label="アバターを選択"
+      >
+        <span className="btn__caption">アバター</span>
+        <span className="btn__value">{currentLabel}</span>
+        <span className="btn__chevron">▾</span>
+      </button>
+
+      {pickerOpen && (
+        <div
+          className="picker-backdrop"
+          onClick={() => setPickerOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="picker-sheet"
+            onClick={(e) => e.stopPropagation()}
           >
-            {CHARACTERS[type].labelJa}
-          </button>
-        ))}
-      </div>
+            <div className="picker-header">
+              <span className="picker-title">アバターを選択</span>
+              <button
+                className="picker-close"
+                onClick={() => setPickerOpen(false)}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+            <div className="picker-grid">
+              {CHARACTER_ORDER.map((type) => (
+                <button
+                  key={type}
+                  className={`picker-cell ${characterType === type ? 'picker-cell--active' : ''}`}
+                  onClick={() => {
+                    onCharacterChange(type);
+                    setPickerOpen(false);
+                  }}
+                >
+                  {CHARACTERS[type].labelJa}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {camStatus !== 'ready' ? (
         <button
