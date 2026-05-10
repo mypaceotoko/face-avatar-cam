@@ -13,65 +13,31 @@ const VERT = /* glsl */ `
 `;
 
 // uMask is a single-channel float texture aligned to the same UV space as
-// uVideo (both come from the un-mirrored camera frame). uUseMask gates the
-// chroma-key branch so the same plane handles "video only" and "green screen"
-// without rebuilding materials.
+// uVideo. uUseMask gates the chroma-key branch.
 //
-// Refinement pipeline:
-//   1. Cross-bilateral filter — at each output pixel sample a 5x5 grid of
-//      neighbouring (mask, video) pairs. Weight each tap by both spatial
-//      Gaussian and *color similarity to the centre's video color* so the
-//      mask snaps to actual edges in the video. This recovers fine detail
-//      (fingers, hair tips) that the 256×256 segmenter mask doesn't have.
-//   2. Contrast push (sigmoid widening) — pulls grey/uncertain pixels toward
-//      0 or 1 for メリハリ.
-//   3. Tight smoothstep — a narrow 0.42→0.58 window so the matte transitions
-//      crisply over only ~1px instead of fading over a wide band.
+// メリハリ pipeline (lightweight — no per-pixel bilateral filter):
+//   1. Sigmoid contrast widen — pulls grey/uncertain pixels toward 0 or 1.
+//   2. Tight smoothstep (0.42 → 0.58) — narrow transition band so the
+//      matte resolves over ≈1 pixel instead of fading across a wide band.
+//
+// Temporal stability is handled CPU-side in useSegmenter via an EMA over
+// the raw mask buffer, which makes the silhouette read as sharp without
+// requiring any expensive shader work.
 const FRAG = /* glsl */ `
   precision highp float;
   uniform sampler2D uVideo;
   uniform sampler2D uMask;
   uniform float uUseMask;
   uniform vec3 uBgColor;
-  uniform vec2 uTexel;
   varying vec2 vUv;
-
-  // Edge-aware (cross-bilateral) refinement of the upsampled mask.
-  float refineMask(vec2 uv) {
-    vec3 cCol = texture2D(uVideo, uv).rgb;
-    float sumW = 0.0;
-    float sumM = 0.0;
-    // 5x5 kernel, 1.5-video-texel stride (≈covers the 4-px gap between
-    // neighbouring 256×256 mask cells when the video is 1080p).
-    for (int dy = -2; dy <= 2; dy++) {
-      for (int dx = -2; dx <= 2; dx++) {
-        vec2 off = vec2(float(dx), float(dy)) * uTexel * 1.5;
-        vec2 nUv = uv + off;
-        vec3 nCol = texture2D(uVideo, nUv).rgb;
-        float nMask = texture2D(uMask, nUv).r;
-        // Spatial Gaussian (sigma ≈ √(1/0.6))
-        float r2 = float(dx * dx + dy * dy);
-        float spatial = exp(-r2 * 0.30);
-        // Color Gaussian — taps with very different video color from the
-        // centre get heavily down-weighted, which is what snaps the mask
-        // to real boundaries.
-        vec3 dCol = cCol - nCol;
-        float color = exp(-dot(dCol, dCol) / 0.020);
-        float w = spatial * color;
-        sumW += w;
-        sumM += nMask * w;
-      }
-    }
-    return sumM / max(sumW, 1e-5);
-  }
 
   void main() {
     vec3 col = texture2D(uVideo, vUv).rgb;
     if (uUseMask > 0.5) {
-      float m = refineMask(vUv);
-      // メリハリ contrast widen (steeper sigmoid around 0.5)
-      m = clamp((m - 0.5) * 1.8 + 0.5, 0.0, 1.0);
-      // Crisp narrow threshold band — about 1px transition
+      float m = texture2D(uMask, vUv).r;
+      // Sigmoid widen around 0.5 — ×2.0 contrast for メリハリ.
+      m = clamp((m - 0.5) * 2.0 + 0.5, 0.0, 1.0);
+      // Crisp narrow threshold band.
       m = smoothstep(0.42, 0.58, m);
       col = mix(uBgColor, col, m);
     }
@@ -87,8 +53,6 @@ export type BackgroundPlane = {
   setMaskFrame: (data: Float32Array, width: number, height: number) => void;
   /** Toggle chroma-key composition. Falls back to video-only if no mask yet. */
   setGreenScreen: (on: boolean) => void;
-  /** Tell the bilateral refinement how big a single video pixel is in UV. */
-  setVideoSize: (width: number, height: number) => void;
   dispose: () => void;
 };
 
@@ -120,9 +84,6 @@ export function createBackgroundPlane(video: HTMLVideoElement): BackgroundPlane 
     uMask: { value: maskTex },
     uUseMask: { value: 0 },
     uBgColor: { value: greenColor },
-    // Texel size of the *guide* texture (the video). Updated by
-    // setVideoSize() once the video has known dimensions.
-    uTexel: { value: new THREE.Vector2(1 / 1280, 1 / 720) },
   };
 
   const geometry = new THREE.PlaneGeometry(1, 1);
@@ -197,12 +158,6 @@ export function createBackgroundPlane(video: HTMLVideoElement): BackgroundPlane 
     updateUseMask();
   };
 
-  const setVideoSize = (width: number, height: number) => {
-    if (width > 0 && height > 0) {
-      uniforms.uTexel.value.set(1 / width, 1 / height);
-    }
-  };
-
   const dispose = () => {
     videoTex.dispose();
     maskTex.dispose();
@@ -210,5 +165,5 @@ export function createBackgroundPlane(video: HTMLVideoElement): BackgroundPlane 
     material.dispose();
   };
 
-  return { mesh, texture: videoTex, resize, setMaskFrame, setGreenScreen, setVideoSize, dispose };
+  return { mesh, texture: videoTex, resize, setMaskFrame, setGreenScreen, dispose };
 }

@@ -130,9 +130,6 @@ export function useThreeScene(
       const va =
         video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : aspect;
       background.resize(camera, BG_DISTANCE_CM, va);
-      if (video.videoWidth && video.videoHeight) {
-        background.setVideoSize(video.videoWidth, video.videoHeight);
-      }
     };
 
     const ro = new ResizeObserver(resize);
