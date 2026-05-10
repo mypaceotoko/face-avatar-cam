@@ -108,7 +108,7 @@ export interface CharacterConfig {
 
 export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   child: {
-    labelJa: '子供',
+    labelJa: '少年1',
     // Perfectly round Memoji-style head
     headScaleX: 1.00,
     headScaleY: 1.04,
@@ -176,7 +176,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // Reference: chubby-cheeked boy with volumized swept-back chocolate hair,
   // big chocolate eyes, peachy skin, soft natural mouth.
   boy: {
-    labelJa: '少年',
+    labelJa: '少年2',
     // Round, slightly chubby head — fuller cheeks/jaw than the child preset
     headScaleX: 1.04,
     headScaleY: 1.04,
@@ -248,7 +248,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // mature than the boy's chubby ivory. No blush (cool, composed look) but
   // hair highlights and eye accents stay on for premium Memoji-grade detail.
   youngman: {
-    labelJa: '青年',
+    labelJa: '青年1',
     // Slightly elongated head — a touch of jaw definition without making it
     // angular. Read as "young adult", not "kid".
     headScaleX: 0.99,
@@ -384,7 +384,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   },
 
   woman: {
-    labelJa: '女性',
+    labelJa: '女性1',
     // Round but slightly more oval — feminine
     headScaleX: 0.96,
     headScaleY: 1.05,
@@ -574,7 +574,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // pick between two distinct young-adult-male looks.
   // ===========================================================================
   youngmanB: {
-    labelJa: '青年B',
+    labelJa: '青年2',
     headScaleX: 1.00,
     headScaleY: 1.11,
     headScaleZ: 0.99,
@@ -701,7 +701,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // Clearly distinct from `woman` (long flowing hair) and `girl` (long wave).
   // ===========================================================================
   womanB: {
-    labelJa: '女性B',
+    labelJa: '女性2',
     headScaleX: 0.96,
     headScaleY: 1.04,
     headScaleZ: 0.95,
@@ -765,7 +765,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // `girl`.
   // ===========================================================================
   womanC: {
-    labelJa: '女性C',
+    labelJa: '女性3',
     headScaleX: 0.97,
     headScaleY: 1.05,
     headScaleZ: 0.96,
