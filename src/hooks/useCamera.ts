@@ -21,10 +21,14 @@ export type UseCameraResult = {
   mode: CameraMode;
   availableModes: CameraMode[];
   setMode: (mode: CameraMode) => Promise<void>;
+  torchOn: boolean;
+  torchSupported: boolean;
+  toggleTorch: () => Promise<void>;
 };
 
 type ZoomCapability = { min: number; max: number; step?: number };
 type ZoomSettings = { zoom?: number };
+type TorchSettings = { torch?: boolean };
 
 const baseVideo = (deviceId?: string): MediaTrackConstraints => ({
   ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
@@ -114,6 +118,12 @@ async function applyZoom(track: MediaStreamTrack, zoom: number): Promise<boolean
   }
 }
 
+function hasTorchCapability(track: MediaStreamTrack | undefined): boolean {
+  if (!track) return false;
+  const caps = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & { torch?: boolean };
+  return !!caps.torch;
+}
+
 // iOS Safari: video must have playsinline + muted + autoplay to render in-page.
 // getUserMedia must be triggered by a user gesture (Start button).
 export function useCamera(): UseCameraResult {
@@ -129,6 +139,8 @@ export function useCamera(): UseCameraResult {
   // never expose a separate ultrawide front device, so this is the only
   // signal that the front lens can be widened.
   const frontCanWidenRef = useRef(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
 
   const attachStream = useCallback(async (s: MediaStream) => {
     streamRef.current = s;
@@ -171,6 +183,25 @@ export function useCamera(): UseCameraResult {
     recomputeAvailable();
   }, [recomputeAvailable]);
 
+  const updateTorchSupport = useCallback((track: MediaStreamTrack | undefined) => {
+    setTorchSupported(hasTorchCapability(track));
+    setTorchOn(false);
+  }, []);
+
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track || !hasTorchCapability(track)) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as MediaTrackConstraintSet & TorchSettings],
+      });
+      setTorchOn(next);
+    } catch {
+      // torch not available in this context
+    }
+  }, [torchOn]);
+
   const start = useCallback(async () => {
     if (streamRef.current) return;
     setStatus('starting');
@@ -179,6 +210,7 @@ export function useCamera(): UseCameraResult {
       const s = await navigator.mediaDevices.getUserMedia(frontConstraints());
       await attachStream(s);
       probeFrontWiden(s.getVideoTracks()[0]);
+      updateTorchSupport(s.getVideoTracks()[0]);
       setModeState('front');
       setStatus('ready');
       void refreshDevices();
@@ -187,7 +219,7 @@ export function useCamera(): UseCameraResult {
       setError(msg);
       setStatus('error');
     }
-  }, [attachStream, probeFrontWiden, refreshDevices]);
+  }, [attachStream, probeFrontWiden, refreshDevices, updateTorchSupport]);
 
   const stop = useCallback(() => {
     const s = streamRef.current;
@@ -201,6 +233,8 @@ export function useCamera(): UseCameraResult {
     setAvailableModes(['front']);
     devicesRef.current = {};
     frontCanWidenRef.current = false;
+    setTorchOn(false);
+    setTorchSupported(false);
   }, []);
 
   const setMode = useCallback(
@@ -276,6 +310,7 @@ export function useCamera(): UseCameraResult {
         }
 
         if (next === 'front' || next === 'front-wide') probeFrontWiden(track);
+        updateTorchSupport(track);
 
         // After the first back grant iOS can reveal additional labels, and
         // the freshly-opened track's zoom caps tell us whether this device
@@ -294,7 +329,7 @@ export function useCamera(): UseCameraResult {
         }
       }
     },
-    [attachStream, mode, probeFrontWiden, refreshDevices],
+    [attachStream, mode, probeFrontWiden, refreshDevices, updateTorchSupport],
   );
 
   useEffect(() => {
@@ -314,5 +349,8 @@ export function useCamera(): UseCameraResult {
     mode,
     availableModes,
     setMode,
+    torchOn,
+    torchSupported,
+    toggleTorch,
   };
 }

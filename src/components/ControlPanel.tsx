@@ -32,6 +32,9 @@ type Props = {
   onToggleGreenScreen: () => void;
   onCycleCamera: () => void;
   onCharacterChange: (type: CharacterType) => void;
+  torchOn: boolean;
+  torchSupported: boolean;
+  onToggleTorch: () => void;
 };
 
 export function ControlPanel({
@@ -58,6 +61,9 @@ export function ControlPanel({
   onToggleGreenScreen,
   onCycleCamera,
   onCharacterChange,
+  torchOn,
+  torchSupported,
+  onToggleTorch,
 }: Props) {
   const cameraCycleDisabled = availableCameraModes.length <= 1;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -156,6 +162,16 @@ export function ControlPanel({
           >
             {CAMERA_MODE_LABEL[cameraMode]}
           </button>
+          {torchSupported && (
+            <button
+              className={`btn btn--torch ${torchOn ? 'btn--torch--on' : ''}`}
+              onClick={onToggleTorch}
+              aria-label={torchOn ? 'ライト OFF' : 'ライト ON'}
+              title={torchOn ? 'ライトを消す' : 'ライトを点ける'}
+            >
+              {torchOn ? '🔦 ON' : '🔦 OFF'}
+            </button>
+          )}
           {recStatus !== 'unsupported' && (
             <button
               className={`btn ${recStatus === 'recording' ? 'btn--danger' : 'btn--primary'}`}
