@@ -130,7 +130,12 @@ export function App() {
             <small>iOS は Safari + HTTPS が必要です</small>
           </div>
         )}
-        {screenFlash && <div className="screen-flash" />}
+        {screenFlash && (
+          <>
+            <div className="screen-flash" />
+            <div className="light-indicator">💡 ライト中</div>
+          </>
+        )}
         <DownloadLink recording={recorder.recording} onClear={recorder.clear} />
       </div>
 
