@@ -22,6 +22,9 @@ export function App() {
     mode,
     availableModes,
     setMode,
+    torchOn,
+    torchSupported,
+    toggleTorch,
   } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [debug, setDebug] = useState(false);
@@ -142,6 +145,9 @@ export function App() {
         onToggleGreenScreen={onToggleGreenScreen}
         onCycleCamera={onCycleCamera}
         onCharacterChange={setCharacterType}
+        torchOn={torchOn}
+        torchSupported={torchSupported}
+        onToggleTorch={() => void toggleTorch()}
       />
     </div>
   );

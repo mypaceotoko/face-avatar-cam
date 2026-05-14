@@ -415,6 +415,15 @@ body,
   font-weight: 700;
 }
 
+.btn--torch {
+  background: #2a2a2a;
+}
+
+.btn--torch--on {
+  background: #ffdd57;
+  color: #1a1200;
+}
+
 .status {
   font-size: 12px;
   color: var(--muted);
