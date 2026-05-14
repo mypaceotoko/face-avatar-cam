@@ -33,11 +33,25 @@ export function App() {
   const [greenScreen, setGreenScreen] = useState(false);
   const [characterType, setCharacterType] = useState<CharacterType>('child');
   const [screenFlash, setScreenFlash] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   // Screen flash off when camera mode changes or stops
   useEffect(() => {
     setScreenFlash(false);
   }, [mode, status]);
+
+  // Keep screen awake while flash is on
+  useEffect(() => {
+    if (screenFlash && 'wakeLock' in navigator) {
+      (navigator.wakeLock as { request(t: string): Promise<WakeLockSentinel> })
+        .request('screen')
+        .then((lock) => { wakeLockRef.current = lock; })
+        .catch(() => {});
+    } else {
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+  }, [screenFlash]);
 
   const greenScreenRef = useRef(false);
   useEffect(() => {
@@ -131,10 +145,9 @@ export function App() {
           </div>
         )}
         {screenFlash && (
-          <>
-            <div className="screen-flash" />
-            <div className="light-indicator">💡 ライト中</div>
-          </>
+          <div className="screen-flash" onClick={() => setScreenFlash(false)}>
+            <span className="screen-flash__hint">タップでライトOFF</span>
+          </div>
         )}
         <DownloadLink recording={recorder.recording} onClear={recorder.clear} />
       </div>

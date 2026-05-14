@@ -425,26 +425,22 @@ body,
 }
 
 .screen-flash {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: rgba(255, 252, 220, 0.55);
-  z-index: 200;
-  pointer-events: none;
+  background: #ffffff;
+  z-index: 9000;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
 }
 
-.light-indicator {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 14px;
-  background: rgba(255, 220, 50, 0.85);
-  color: #1a1000;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
+.screen-flash__hint {
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.3);
+  font-weight: 500;
   pointer-events: none;
-  z-index: 201;
 }
 
 .status {
