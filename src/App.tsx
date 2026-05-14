@@ -32,6 +32,12 @@ export function App() {
   const [calibrating, setCalibrating] = useState(false);
   const [greenScreen, setGreenScreen] = useState(false);
   const [characterType, setCharacterType] = useState<CharacterType>('child');
+  const [screenFlash, setScreenFlash] = useState(false);
+
+  // Screen flash off when camera mode changes or stops
+  useEffect(() => {
+    setScreenFlash(false);
+  }, [mode, status]);
 
   const greenScreenRef = useRef(false);
   useEffect(() => {
@@ -84,6 +90,12 @@ export function App() {
 
   const onToggleGreenScreen = () => setGreenScreen((g) => !g);
 
+  const lightOn = torchOn || screenFlash;
+  const onToggleLight = () => {
+    if (torchSupported) void toggleTorch();
+    else setScreenFlash((f) => !f);
+  };
+
   const onCycleCamera = () => {
     if (availableModes.length <= 1) return;
     const idx = availableModes.indexOf(mode);
@@ -118,6 +130,7 @@ export function App() {
             <small>iOS は Safari + HTTPS が必要です</small>
           </div>
         )}
+        {screenFlash && <div className="screen-flash" />}
         <DownloadLink recording={recorder.recording} onClear={recorder.clear} />
       </div>
 
@@ -145,9 +158,8 @@ export function App() {
         onToggleGreenScreen={onToggleGreenScreen}
         onCycleCamera={onCycleCamera}
         onCharacterChange={setCharacterType}
-        torchOn={torchOn}
-        torchSupported={torchSupported}
-        onToggleTorch={() => void toggleTorch()}
+        lightOn={lightOn}
+        onToggleLight={onToggleLight}
       />
     </div>
   );
