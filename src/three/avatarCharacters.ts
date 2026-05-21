@@ -1,6 +1,7 @@
 export type CharacterType =
   | 'child'
   | 'boy'
+  | 'boyPhoto'
   | 'youngman'
   | 'youngmanB'
   | 'driver'
@@ -223,6 +224,67 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     irisColor: 0x4a2a14,
     lipColor: 0xc97f72,
     browColor: 0x432817,
+    hairStyle: 'boyswept',
+    hasLashes: false,
+    hasBlush: true,
+    blushColor: 0xff9985,
+    hasEyeMakeup: false,
+    hasLipGloss: false,
+    hasHairBangs: false,
+    hasHairHighlights: false,
+    hasEyeAccents: false,
+    hasBeard: false,
+    beardColor: 0x1a0d06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
+  // Reference image recreation: "boy" (13th avatar slot).
+  // Distinct from existing 少年2 preset; tuned to closely match the provided face:
+  // fuller lower cheeks, slightly larger irises, flatter brows, and tighter lips.
+  boyPhoto: {
+    labelJa: 'boy',
+    headScaleX: 1.03,
+    headScaleY: 1.03,
+    headScaleZ: 1.00,
+    eyeRadius: 0.236,
+    eyeOffsetX: 0.300,
+    eyeOffsetY: 0.078,
+    eyeZ: 0.772,
+    irisRadius: 0.162,
+    browWidth: 0.28,
+    browHeight: 0.056,
+    browDepth: 0.070,
+    browOffsetX: 0.300,
+    browOffsetY: 0.362,
+    browOffsetZ: 0.810,
+    browRotY: 0.12,
+    browRotZInner: 0.035,
+    noseRadius: 0.061,
+    noseOffsetY: -0.072,
+    noseZ: 0.946,
+    noseScaleX: 0.94,
+    noseScaleY: 0.98,
+    noseScaleZ: 0.80,
+    earRadius: 0.125,
+    earOffsetX: 0.90,
+    mouthOffsetY: -0.342,
+    mouthOffsetZ: 0.826,
+    lipTorusRadius: 0.118,
+    lipTubeRadius: 0.031,
+    cheekRadius: 0.25,
+    cheekOffsetX: 0.50,
+    cheekOffsetY: -0.135,
+    cheekOffsetZ: 0.625,
+    skinColor: 0xf3ccb0,
+    cheekColor: 0xe69a88,
+    hairColor: 0x3f281b,
+    irisColor: 0x4a2a14,
+    lipColor: 0xbc7d73,
+    browColor: 0x3f281b,
     hairStyle: 'boyswept',
     hasLashes: false,
     hasBlush: true,
@@ -903,4 +965,5 @@ export const CHARACTER_ORDER: CharacterType[] = [
   'uncle',
   'grandpa',
   'ghost',
+  'boyPhoto',
 ];
