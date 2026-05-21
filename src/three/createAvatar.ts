@@ -1192,6 +1192,81 @@ function buildHair(
       }
     }
 
+  } else if (cfg.hairStyle === 'waitress') {
+    // Premium waitress style: refined medium-long layered hair with a
+    // side-parted sweep, soft face-framing strands, and a clean service-ready
+    // silhouette that feels distinct from existing female presets.
+    const capGeom = new THREE.SphereGeometry(0.965, 96, 96, 0, Math.PI * 2, 0, Math.PI * 0.43);
+    xGeoms.push(capGeom);
+    const cap = new THREE.Mesh(capGeom, materials.hair);
+    cap.position.set(0, 0.06, 0);
+    hair.add(cap);
+
+    const layerGeom = new THREE.SphereGeometry(0.17, 26, 20);
+    xGeoms.push(layerGeom);
+    const LAYERS: Array<[number, number, number, number, number, number, number, number, number]> = [
+      [ 0.63, 0.28, 0.22,  0.00,  0.08, -0.06,  1.10, 1.70, 0.56 ],
+      [ 0.70, -0.20, 0.12, 0.00,  0.12, -0.10,  1.25, 2.20, 0.56 ],
+      [ 0.74, -0.78, 0.04, 0.02,  0.14, -0.16,  1.28, 2.10, 0.52 ],
+      [-0.58, 0.28, 0.20, 0.00, -0.06,  0.06,  1.00, 1.60, 0.54 ],
+      [-0.64, -0.20, 0.10, 0.00, -0.10,  0.10,  1.14, 2.05, 0.54 ],
+      [-0.68, -0.74, 0.02, 0.02, -0.14,  0.16,  1.18, 1.98, 0.50 ],
+    ];
+    for (const l of LAYERS) {
+      const m = new THREE.Mesh(layerGeom, materials.hair);
+      m.position.set(l[0], l[1], l[2]);
+      m.rotation.set(l[3], l[4], l[5]);
+      m.scale.set(l[6], l[7], l[8]);
+      hair.add(m);
+    }
+
+    const backGeom = new THREE.SphereGeometry(0.28, 24, 18);
+    xGeoms.push(backGeom);
+    const backUpper = new THREE.Mesh(backGeom, materials.hair);
+    backUpper.position.set(0.0, -0.08, -0.52);
+    backUpper.scale.set(2.05, 1.85, 1.02);
+    hair.add(backUpper);
+    const backLower = new THREE.Mesh(backGeom, materials.hair);
+    backLower.position.set(0.02, -0.86, -0.44);
+    backLower.scale.set(1.98, 1.72, 0.90);
+    hair.add(backLower);
+
+    // Signature front sweep (restaurant-uniform neat styling).
+    const sweepGeom = new THREE.SphereGeometry(0.16, 20, 14);
+    xGeoms.push(sweepGeom);
+    const sweep = new THREE.Mesh(sweepGeom, materials.hair);
+    sweep.position.set(-0.14, 0.44, 0.76);
+    sweep.scale.set(2.35, 0.50, 0.30);
+    sweep.rotation.set(-0.16, 0.10, -0.18);
+    hair.add(sweep);
+
+    if (cfg.hasHairHighlights) {
+      const hlColor = new THREE.Color(cfg.hairColor).lerp(new THREE.Color(0xae7650), 0.42);
+      const hlMat = new THREE.MeshStandardMaterial({
+        color: hlColor,
+        roughness: 0.33,
+        metalness: 0.06,
+        emissive: hlColor.clone().multiplyScalar(0.05),
+        emissiveIntensity: 0.4,
+      });
+      xMats.push(hlMat);
+      const hlGeom = new THREE.SphereGeometry(0.045, 10, 8);
+      xGeoms.push(hlGeom);
+      const HL: Array<[number, number, number, number, number, number, number, number, number]> = [
+        [ 0.70, -0.24, 0.10, 0.00,  0.12, -0.10,  0.42, 2.90, 0.46 ],
+        [ 0.74, -0.74, 0.04, 0.02,  0.14, -0.16,  0.42, 2.55, 0.46 ],
+        [-0.64, -0.22, 0.10, 0.00, -0.10,  0.10,  0.42, 2.80, 0.46 ],
+        [-0.68, -0.70, 0.02, 0.02, -0.14,  0.16,  0.42, 2.45, 0.46 ],
+      ];
+      for (const h of HL) {
+        const m = new THREE.Mesh(hlGeom, hlMat);
+        m.position.set(h[0], h[1], h[2]);
+        m.rotation.set(h[3], h[4], h[5]);
+        m.scale.set(h[6], h[7], h[8]);
+        hair.add(m);
+      }
+    }
+
   } else if (cfg.hairStyle === 'ghost') {
     // Spectral long stringy black hair: thin tendrils hanging well below the
     // chin, plus a few strands draping over the forehead/eyes. A faint pale

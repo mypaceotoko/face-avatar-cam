@@ -9,6 +9,7 @@ export type CharacterType =
   | 'woman'
   | 'womanB'
   | 'womanC'
+  | 'waitress'
   | 'uncle'
   | 'grandpa'
   | 'ghost';
@@ -71,6 +72,7 @@ export interface CharacterConfig {
     | 'woman'
     | 'womanbob'
     | 'womanchic'
+    | 'waitress'
     | 'man'
     | 'grandpa'
     | 'ghost'
@@ -888,6 +890,66 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
     isGhost: false,
   },
 
+  // High-quality waitress character: polished hospitality look with warm smile,
+  // glossy side-parted hair, and clean makeup accents.
+  waitress: {
+    labelJa: 'ウェイトレス',
+    headScaleX: 0.97,
+    headScaleY: 1.07,
+    headScaleZ: 0.96,
+    eyeRadius: 0.242,
+    eyeOffsetX: 0.298,
+    eyeOffsetY: 0.098,
+    eyeZ: 0.772,
+    irisRadius: 0.171,
+    browWidth: 0.27,
+    browHeight: 0.044,
+    browDepth: 0.050,
+    browOffsetX: 0.298,
+    browOffsetY: 0.388,
+    browOffsetZ: 0.812,
+    browRotY: 0.14,
+    browRotZInner: 0.09,
+    noseRadius: 0.048,
+    noseOffsetY: -0.068,
+    noseZ: 0.938,
+    noseScaleX: 0.80,
+    noseScaleY: 0.88,
+    noseScaleZ: 0.68,
+    earRadius: 0.102,
+    earOffsetX: 0.86,
+    mouthOffsetY: -0.302,
+    mouthOffsetZ: 0.836,
+    lipTorusRadius: 0.151,
+    lipTubeRadius: 0.045,
+    cheekRadius: 0.20,
+    cheekOffsetX: 0.43,
+    cheekOffsetY: -0.10,
+    cheekOffsetZ: 0.68,
+    skinColor: 0xf7d2b0,
+    cheekColor: 0xff9e93,
+    hairColor: 0x2e1c16,
+    irisColor: 0x4a2d1d,
+    lipColor: 0xd06d78,
+    browColor: 0x2e1c16,
+    hairStyle: 'waitress',
+    hasLashes: true,
+    hasBlush: true,
+    blushColor: 0xff9a90,
+    hasEyeMakeup: true,
+    hasLipGloss: true,
+    hasHairBangs: true,
+    hasHairHighlights: true,
+    hasEyeAccents: true,
+    hasBeard: false,
+    beardColor: 0x1e0e06,
+    beardStyle: 'none',
+    hasGlasses: false,
+    hasWrinkles: false,
+    hatStyle: 'none',
+    isGhost: false,
+  },
+
   // ===========================================================================
   // おばけ (ghost) — pale spectre. Cool grey skin, long stringy black hair
   // hanging over the face, and glowing crimson eyes courtesy of the iris
@@ -966,4 +1028,5 @@ export const CHARACTER_ORDER: CharacterType[] = [
   'grandpa',
   'ghost',
   'boyPhoto',
+  'waitress',
 ];
