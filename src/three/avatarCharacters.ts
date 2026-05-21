@@ -176,7 +176,7 @@ export const CHARACTERS: Record<CharacterType, CharacterConfig> = {
   // Reference: chubby-cheeked boy with volumized swept-back chocolate hair,
   // big chocolate eyes, peachy skin, soft natural mouth.
   boy: {
-    labelJa: '少年2',
+    labelJa: 'boy',
     // Round, slightly chubby head — fuller cheeks/jaw than the child preset
     headScaleX: 1.04,
     headScaleY: 1.04,
