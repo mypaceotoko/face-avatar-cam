@@ -118,7 +118,11 @@ export function createEye(
     group,
     material,
     update(blink: number, wide: number, x: number, y: number) {
-      closure = THREE.MathUtils.clamp(blink - wide * 0.1, 0, 1);
+      closure = THREE.MathUtils.clamp(
+        blink - wide * 0.12 * (1 - blink),
+        -0.12,
+        1,
+      );
       gaze.value.set(x * 0.045, y * 0.033);
       if (Math.abs(previous - closure) < 0.001) return;
       previous = closure;

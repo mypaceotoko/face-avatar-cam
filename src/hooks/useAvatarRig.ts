@@ -27,9 +27,11 @@ export function useAvatarRig(
     latest = useRef(options);
   latest.current = options;
   const calibration = useRef(new Calibration());
+  // Coverage affects placement only; adjusting it must not rebuild or reset the rig.
+  const appearanceKey = JSON.stringify({ ...options.settings, coverage: 1 });
   useEffect(() => {
     if (!parent) return;
-    const rig = createAvatar(options.settings);
+    const rig = createAvatar(latest.current.settings);
     rig.root.position.z = -55;
     parent.add(rig.root);
     rigRef.current = rig;
@@ -103,7 +105,7 @@ export function useAvatarRig(
       rig.dispose();
       rigRef.current = null;
     };
-  }, [parent, faceStateRef, sceneRef, options.settings]);
+  }, [parent, faceStateRef, sceneRef, appearanceKey]);
   const startCalibration = useCallback(
     (durationMs = 1500) => calibration.current.start(durationMs),
     [],

@@ -4,6 +4,7 @@ type Props = {
   camStatus: CameraStatus;
   recStatus: RecorderStatus;
   tracking: boolean;
+  faceDetected: boolean;
   calibrating: boolean;
   audio: boolean;
   disabled: boolean;
@@ -25,7 +26,11 @@ export function ControlPanel(p: Props) {
         <button
           className="btn btn--primary"
           onClick={ready ? p.onStop : p.onStart}
-          disabled={p.camStatus === "starting" || p.recStatus === "stopping"}
+          disabled={
+            p.camStatus === "starting" ||
+            p.recStatus === "stopping" ||
+            (!ready && busy)
+          }
         >
           {ready
             ? "カメラ停止"
@@ -69,7 +74,7 @@ export function ControlPanel(p: Props) {
             </button>
             <button
               onClick={p.onCalibrate}
-              disabled={p.calibrating || !p.tracking}
+              disabled={p.calibrating || !p.tracking || !p.faceDetected}
             >
               {p.calibrating ? "取得中…" : "表情を補正"}
             </button>
@@ -82,6 +87,7 @@ export function ControlPanel(p: Props) {
             <input
               type="checkbox"
               checked={p.audio}
+              disabled={busy}
               onChange={(e) => p.onAudio(e.target.checked)}
             />{" "}
             マイクを使う

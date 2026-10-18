@@ -27,7 +27,9 @@ export function useRecorder(
   const recorder = useRef<MediaRecorder | null>(null),
     ownedStream = useRef<MediaStream | null>(null),
     mounted = useRef(true);
-  const release = useCallback(() => {
+  const release = useCallback((expected?: MediaRecorder) => {
+    // A delayed stop event from a failed recorder must not close a new session.
+    if (expected && recorder.current !== expected) return;
     ownedStream.current?.getTracks().forEach((t) => t.stop());
     ownedStream.current = null;
     recorder.current = null;
@@ -81,7 +83,7 @@ export function useRecorder(
         if (e.data.size) chunks.push(e.data);
       };
       r.onstop = () => {
-        release();
+        release(r);
         if (!mounted.current) return;
         if (!failed) {
           save(
@@ -99,7 +101,7 @@ export function useRecorder(
         );
         setStatus("error");
         if (r.state !== "inactive") r.stop();
-        release();
+        release(r);
       };
       recorder.current = r;
       r.start(1000);

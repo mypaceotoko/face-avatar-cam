@@ -39,6 +39,7 @@ export function useCamera() {
         try {
           s = await navigator.mediaDevices.getUserMedia({ video, audio });
         } catch (e) {
+          if (token !== generation.current) return;
           if (!audio) throw e;
           s = await navigator.mediaDevices.getUserMedia({
             video,

@@ -286,6 +286,7 @@ export function App() {
         camStatus={camera.status}
         recStatus={recorder.status}
         tracking={tracking}
+        faceDetected={detected}
         calibrating={calibrating}
         audio={camera.audio}
         disabled={!scene.mirrorRoot || !!scene.error || scene.contextLost}
