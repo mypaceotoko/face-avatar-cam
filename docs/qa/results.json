@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-18T00:29:32.350Z",
+  "browser": "154.0.8037.57",
+  "checks": [
+    "Camera-free studio initializes without camera permission",
+    "Skin and eye edits survive reload",
+    "PNG snapshot contains rendered pixels",
+    "Composited canvas records and returns a playable video preview",
+    "Recording can retry after encoder error; late callbacks do not stop the new session",
+    "WebGL context loss/restoration resumes rendering and capture",
+    "Camera permission denial is explained and remains retryable",
+    "Synthetic camera start/stop releases all camera tracks",
+    "390px touch layout has no horizontal overflow and capture remains reachable",
+    "Extreme edits keep finite geometry; stored input is sanitized; smoothing is time-based; fit centers correctly",
+    "Front / 45° / profile / blink / laugh / pucker / sad / wink rendered under 60k triangles"
+  ],
+  "renderStats": {
+    "front": {
+      "calls": 44,
+      "triangles": 49456,
+      "geometries": 44,
+      "closedEyeHidden": true
+    },
+    "three-quarter": {
+      "calls": 44,
+      "triangles": 49456,
+      "geometries": 44,
+      "closedEyeHidden": true
+    },
+    "profile": {
+      "calls": 44,
+      "triangles": 49456,
+      "geometries": 44,
+      "closedEyeHidden": true
+    },
+    "blink": {
+      "calls": 42,
+      "triangles": 46896,
+      "geometries": 44,
+      "closedEyeHidden": true
+    },
+    "laugh": {
+      "calls": 46,
+      "triangles": 50304,
+      "geometries": 46,
+      "closedEyeHidden": true
+    },
+    "kiss": {
+      "calls": 44,
+      "triangles": 49456,
+      "geometries": 46,
+      "closedEyeHidden": true
+    },
+    "sad": {
+      "calls": 44,
+      "triangles": 49456,
+      "geometries": 46,
+      "closedEyeHidden": true
+    },
+    "wink": {
+      "calls": 43,
+      "triangles": 48176,
+      "geometries": 46,
+      "closedEyeHidden": true
+    }
+  },
+  "errors": [],
+  "limitations": [
+    "Synthetic camera only; no real FaceLandmarker inference or human tracking verified.",
+    "Chromium/SwiftShader is not an iPhone performance benchmark.",
+    "Safari recording, audio/share and thermal behavior require physical devices."
+  ]
+}

@@ -6,7 +6,7 @@ import { emptyFaceState, type FaceState } from "../face/types";
 export type FaceLandmarkerStatus = "idle" | "loading" | "ready" | "error";
 
 const WASM_BASE =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm";
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 // Hosted by Google. We can swap to /models/face_landmarker.task in public/ to
 // run fully offline; CDN keeps the repo small.
 const MODEL_URL =

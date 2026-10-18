@@ -1,143 +1,130 @@
-# Face Avatar Cam
+# Face Avatar — Expression Studio
 
-ブラウザ完結で動く、顔だけを Memoji 風 3D アバターに置き換える撮影 Web アプリ。
+React + TypeScript + Vite + Three.js + MediaPipeで動く、端末内処理の3Dアバターカメラです。カメラ映像を背景として描画し、顔の位置・向き・表情にオリジナルのアバターを重ねます。Cloudflare Pagesに静的ファイルとして配置できます。認証、アプリ用サーバー、有料AI APIは不要です。
 
-- インカメラを取得し、ユーザーの顔(顔まわり)だけをリアルタイムで自作 3D アバターに差し替えて表示する
-- 体や背景はそのままカメラ映像が見える
-- 口の開閉、まばたき、眉、視線、頭の姿勢に追従
-- ブラウザ内で録画 → ダウンロード可能
-- Vite + React + TypeScript + Three.js + MediaPipe Tasks Vision FaceLandmarker
-- 外部の有料 API なし、Apple Memoji や VRM などの既存資産も使わずに、Three.js プリミティブだけで Memoji 風ルックを自作
-
-## 必要環境
-
-- Node.js 18+
-- ブラウザ:
-  - PC: Chrome / Edge / Safari (最新)
-  - 実機: iPhone Safari (iOS 16+ 推奨)、Android Chrome
-- HTTPS で動作(`getUserMedia` の要件)
+![Studio](docs/qa/studio-desktop.png)
 
 ## セットアップ
 
-```bash
-npm install
+Node.js 20.19+ または22.12+を推奨します。
+
+```sh
+npm ci
 npm run dev
 ```
 
-`https://localhost:5173` を開く(自己署名証明書のため初回は警告を承認)。
+開発サーバーはHTTPSの `https://localhost:5173`。スマートフォンからは同じネットワーク上の開発マシンのIPを使用します。開発用の自己署名証明書は端末によって信頼設定が必要です。実機確認には正規HTTPSのCloudflare PagesプレビューURLを推奨します。
 
-iPhone 実機テスト:同 LAN の PC で `npm run dev` し、PC の IP に HTTPS でアクセス。例:
-
-```
-https://192.168.1.10:5173
-```
-
-Vite の `@vitejs/plugin-basic-ssl` で自己署名証明書が発行されるため、iPhone 側でも一度警告を承認すれば使える。
-
-## 使い方
-
-1. 「カメラ開始」をタップ → カメラとマイク許可
-2. 顔を正面に向け、無表情で **「キャリブレ」** をタップ(1.5 秒静止) — 表情の中立点が学習されます
-3. 「追従 ON」状態で口・目・眉・頭の動きがアバターに反映
-4. 「録画開始」→「録画停止」→ プレビューと「ダウンロード」が表示されます
-5. 「Debug」をタップすると FPS と blendshape の値が見えます
-
-## ファイル構成
-
-```
-src/
-├── main.tsx                          # エントリ
-├── App.tsx                           # 全体オーケストレーション
-├── styles.css
-├── components/
-│   ├── CameraView.tsx                # 非表示の <video>(getUserMedia 結果)
-│   ├── ControlPanel.tsx              # ボタン群
-│   ├── DebugOverlay.tsx              # FPS + blendshape 可視化
-│   └── DownloadLink.tsx              # 録画プレビュー + ダウンロード
-├── hooks/
-│   ├── useCamera.ts                  # getUserMedia + iOS playsinline
-│   ├── useThreeScene.ts              # Three.js renderer / scene / camera
-│   ├── useFaceLandmarker.ts          # MediaPipe ランナー(rAF ループ)
-│   ├── useAvatarRig.ts               # アバター生成 + 毎フレーム適用
-│   └── useRecorder.ts                # MediaRecorder ラッパー
-├── three/
-│   ├── createAvatar.ts               # Memoji 風メッシュ階層を構築
-│   ├── avatarMaterials.ts            # 肌・髪・目・口などのマテリアル
-│   ├── createBackgroundPlane.ts      # video → VideoTexture → Plane
-│   ├── alignCameraToVideo.ts         # FOV/aspect 整合(63°)
-│   └── applyExpression.ts            # blendshape → アバター transform
-├── face/
-│   ├── types.ts                      # FaceState / Blendshape 型
-│   ├── extractFaceState.ts           # FaceLandmarker 結果 → FaceState
-│   ├── smoothing.ts                  # チャネル別 EMA
-│   └── calibration.ts                # 中立基準値の取得・差分適用
-└── utils/
-    └── mime.ts                       # MediaRecorder mime fallback
+```sh
+npm run build
+npm run preview
 ```
 
-## どこで何をしているか
+出力は `dist/`。既存のReact / TypeScript / Three.js / MediaPipe構成を維持しています。
 
-### カメラ
-`useCamera.ts` で `navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })`。iPhone Safari 対策で `<video>` には `playsinline / muted / autoplay` を必ず付ける。`<video>` 自体はオフスクリーンに置き、表示は Three.js 側の `VideoTexture` 経由。
+## プレビューと編集
 
-### 顔トラッキング
-`useFaceLandmarker.ts` で `@mediapipe/tasks-vision` の `FaceLandmarker` を `runningMode: 'VIDEO'` で起動。毎フレーム `detectForVideo(video, performance.now())` を呼び、
+起動するとカメラ許可なしでアバターを表示します。
 
-- `faceBlendshapes[0].categories`(jawOpen, eyeBlinkLeft 等の 0..1)
-- `facialTransformationMatrixes[0].data`(列優先 16 要素、cm 単位)
+- ドラッグで回転。「正面」「45°」「横顔」で造形を確認。
+- Hazel / Amber / Noorプリセット、5段階の肌色と自由な色選択。
+- 顔の幅、顎、目の大きさ・丸み、瞳色、眉のアーチ、鼻の立体感、唇の厚みを調整。
+- ボブ／ショート／ロングの長さバリエーションと髪色。
+- ニュートラル、笑顔、大笑い、驚き、怒り、悲しみ、泣き顔、ウインク、閉眼、すぼめる表情を試せます。泣き顔は表情のみで、涙のエフェクトはありません。
+- 設定は `localStorage` の `face-avatar-studio:v1` に保存。不正な値は検証・補正し、保存できない環境では画面に通知します。
 
-を取得して `extractFaceState.ts` で `FaceState` に整形。
+形状の変更時はメッシュを生成し直します。旧メッシュ・マテリアルは解放します。ユーザーが追加GLBを用意する必要はありません。
 
-### 平滑化とキャリブレーション
-`smoothing.ts` のチャネル別 EMA で表情のジッタを抑える。瞬き(`eyeBlinkLeft/Right`)は α=0.65 と速め、口・眉は α≈0.3 でゆっくり。
-`calibration.ts` は短時間 blendshape を平均して中立値として保存し、適用時に差し引く。これでデフォルトで眉が上がっている人や口元が緩い人でも 0 が 0 になる。
+## カメラと顔追従
 
-### 3D アバター
-`createAvatar.ts` で全部 Three.js プリミティブ(SphereGeometry / TorusGeometry / BoxGeometry / CircleGeometry)で組み立てる。Apple Memoji や VRM は使っていない。
+「カメラ開始」で前面カメラを起動します。マイクは初期状態でOFFです。カメラ開始前に「マイクを使う」を選ぶと音声付き録画を試みます。マイクを取得できない場合は映像のみへフォールバックします。録画中以外は前面・背面の切替が可能です。前面だけを鏡表示にします。
 
-主な構成:
-- 黄色い球状の頭(emoji 風肌色 #f6c945、わずかに縦長)
-- 11 個ほどの「毛束(クランプ)」を頭頂〜前髪に配置して彫刻調の Memoji 髪を再現
-- 大きい白目 + ブラウンの虹彩 + 黒目 + 小さな白ハイライト
-- 肌色の上まぶた(scale.y で blink)
-- 太めのブラウン眉(blendshape で y 位置と回転)
-- ピンクの唇(Torus を平らに潰す)+ 暗赤色の口腔(jawOpen で scale.y)
+MediaPipeの回転行列と、額・顎・左右頬のランドマークから位置とサイズを求めます。カメラ映像と同じ `contain` 表示領域を使って画面座標を合わせます。「顔を覆う範囲」で余白を調整できます。「表情を補正」は1.5秒間の無表情を基準にします。
 
-### 表情の反映
-`applyExpression.ts` が blendshape を rig handles にマッピング:
+映像・推論結果をアップロードしません。ただし初回のトラッキング開始時には、MediaPipe WASMをjsDelivr、モデルをGoogle Storageからダウンロードします。**初回から完全オフラインで動く構成ではありません。** 配信元のURLは `src/hooks/useFaceLandmarker.ts` にあります。必要ならバージョンを揃えたWASMとモデルを `public/` に配置してURLを変更してください。
 
-| blendshape | 反映先 |
-|---|---|
-| jawOpen | mouthCavity / lipsOuter の scale.y |
-| mouthClose | mouthGroup の縦スケール抑制 |
-| mouthSmile* | mouthGroup の position.y を上げる |
-| mouthPucker | 横を縮め奥に伸ばす |
-| eyeBlink* | 上まぶたの scale.y |
-| eyeLookIn/Out/Up/Down | irisRoot の rotation |
-| browInnerUp / browOuterUp* / browDown* | 各眉の position.y と rotation.z |
+### 合成の範囲と限界
 
-### 顔位置合わせ
-`createBackgroundPlane.ts` でカメラ映像を `VideoTexture` 化し、Three シーンの奥に `object-fit: contain` 相当で配置。`alignCameraToVideo.ts` でカメラ FOV を **63°(MediaPipe 仮想カメラと整合)**、シーン単位を **cm** に統一。`applyHeadPose` が `facialTransformationMatrix` を decompose して、translation と rotation だけアバター root にスムーズに適用(scale はアバター造形時の固定値を維持)。前面カメラ慣例の左右反転は `mirrorRoot.scale.x = -1` でまとめて適用。
+- 元映像はアバターの描画範囲外で維持されます。背景・衣服・身体の置換処理はありません。
+- 実装は顔メッシュによる不透明な遮蔽です。**元の髪のセグメンテーション、背景復元、実写の首との完全な境界融合は未実装**です。元の髪型や横顔によって縁に実写が残ります。
+- 顔を見失うと古い位置のアバターを隠し、元映像が表示されます。録画にも反映されるため、匿名化用途の保証はありません。
+- 追従OFFではアバターを固定位置でプレビューします。実写の顔の上に配置し続けるモードではありません。
+- 極端な横顔、手による遮蔽、急な動き、逆光は実機で追加調整が必要です。
 
-### 合成と録画
-背景の `VideoTexture` プレーンの上に 3D アバターが乗っているだけなので、頭まわりは自然にアバターで覆われ、首・肩・服・背景はカメラ映像のまま見える。
-`useRecorder.ts` が `canvas.captureStream(30)` の映像トラックと `getUserMedia` のオーディオトラックを合成し、`MediaRecorder` で録画。`utils/mime.ts` が VP9/Opus → VP8 → WebM → mp4(H264/AAC)→ mp4 の順に対応 mime を試す。`canvas.captureStream` 自体が無いブラウザでは UI 上で「rec:unsupported」を表示。
+## 写真・動画・保存
 
-## iOS Safari 注意点
+- 中央のシャッター：合成済みキャンバスのPNG写真を生成。カメラなしでも撮影できます。
+- 「動画録画」：合成済みキャンバスを30fps指定で録画。停止後に動画プレビューとダウンロードを表示。
+- MediaRecorderが対応するMIMEを検出し、明示的なH.264 MP4を優先。対応しない場合はWebM、最後にブラウザ標準のMP4を選択。
+- File共有に対応する環境では「共有」を表示。iPhoneでは共有シートの画像／ビデオ保存を利用できます。
+- 非対応ブラウザには写真利用を案内。録画終了・失敗時に録画用トラックを解放します。カメラの音声トラックは複製して使用し、録画終了で元のマイクを停止しません。
+- 録画中のモデル編集・カメラ切替を無効化。カメラ停止・WebGLコンテキスト喪失時は録画を停止します。
 
-- HTTPS が必須。LAN 越しのテストは `@vitejs/plugin-basic-ssl` の自己署名で OK
-- カメラ許可は **必ずユーザータップ起点** で呼ぶ(本アプリでは「カメラ開始」)
-- `<video>` には `playsinline + muted + autoplay`(本実装で対応済み)
-- 古い iOS では `MediaRecorder` や `canvas.captureStream` が無い → 録画ボタンを自動で隠す
-- 背景タブから戻ったとき WebGL コンテキストロストが起きることがある → `webglcontextlost` で `preventDefault` 済み
+iOS SafariのMediaRecorder / canvas.captureStream / ファイル共有の対応状況はOS・端末によって異なります。**本変更ではiPhone実機での録画・音声・共有を未検証**です。MP4が生成されることや写真アプリに直接保存できることを全端末で保証しません。
 
-## 既知の制限・改善余地
+## 3D造形と保守
 
-- 顔の元映像は完全には消えていない(アバターが頭ごと覆って隠す形)。完全に置換するには Selfie Segmentation で元の顔領域を黒塗り or マスクするのが次の改善
-- 端末ごとのカメラ画角差で位置がわずかにずれる。FOV を可変にしてキャリブレで合わせ込むことで改善可能
-- 頭だけが浮いて見える → ネックメッシュやフェードで馴染ませる余地
-- iOS Safari の録画は構成によって不安定。安定化には WebCodecs + Mp4Box.js による自前 mp4 生成が候補
+すべて本リポジトリで生成するオリジナルのメッシュ・色・シェーダーです。Appleのモデル、画像、テクスチャ、UI素材は含みません。
 
-## ライセンス / 著作権
+| ファイル | 役割 |
+| --- | --- |
+| `src/three/sculptGeometry.ts` | 頬・鼻筋・鼻先・小鼻・顎・口元を連続曲面で構成。開口部、唇、モーフ位置・法線、頂点色、継ぎ目の法線補正 |
+| `src/three/createEyes.ts` | 曲面の白目、放射状の虹彩・瞳孔・キャッチライト、視線、上下まぶた。開口面とまぶたの共有境界 |
+| `src/three/createHair.ts` | 連続した頭頂、重なった側面の毛束、厚みのある前髪 |
+| `src/three/createAvatar.ts` | リグ構成、歯列・舌・耳、GPUモーフ、リソース解放 |
+| `src/three/avatarMaterials.ts` | マット寄りの肌、髪・唇の材質 |
+| `src/three/applyExpression.ts` | MediaPipeから顎・左右笑顔・口すぼめ・口角下げ・頬膨らみ、眉・瞼・視線へのマッピング |
+| `src/three/fitFaceToVideo.ts` | 実写と同じ表示矩形による位置・サイズ合わせ |
+| `src/avatar/` | 編集値の検証、プリセット、表情プレビュー |
 
-3D アバターはすべて Three.js プリミティブからの自作。Apple Memoji の素材・モデルは一切使用していない。
+肌の柔らかさは頂点色の血色、広い拡散光、粗さで表現しています。物理的なSSSや高負荷のポストプロセスは使用しません。細かな表情チャンネルすべての独立モーフ、歯の個別モデル、涙、毛髪シミュレーションはありません。
+
+## パフォーマンスと端末対応
+
+- 基本アバターは約5万三角形、最大46ドローコール。数値は `docs/qa/results.json` を参照。
+- タッチ端末の描画を30fps目標に制限、その他は60fps目標。推論は最大24Hz、検出に時間がかかる場合は最大12Hz相当まで間隔を延ばします。
+- 描画と推論の実行間隔を分けていますが、**推論はメインスレッド上の同期処理**です。Worker化は未実装です。
+- DPRはタッチ端末1.5、その他2を上限とし、低fpsが続く場合は1まで段階的に削減。
+- 背景タブでは描画・推論を休止。カメラ停止・コンポーネント破棄でストリームを解放。
+- WebGL喪失／復旧、safe-area、`dvh`、横幅390pxの操作を考慮。ボタンは `touch-action: manipulation`、3Dドラッグ領域は `touch-action: none`。ページのピンチ拡大は維持します。
+- 「診断」で描画fps・三角形数・ドローコール・DPRと推論fpsを表示。
+
+30/60fpsは設計目標であり、実機測定値ではありません。iPhoneのGPU・発熱・バッテリーは未測定です。
+
+## 検証
+
+```sh
+npm run build
+npx playwright install chromium
+npm run test:browser
+# システムChromiumの場合
+CHROMIUM_PATH=/usr/bin/chromium npm run test:browser
+```
+
+Playwrightは開発用依存だけです。検証スクリプトはHTTPS開発サーバーを5174ポートで起動し、スクリーンショットと `docs/qa/results.json` を生成します。カメラは合成入力を使います。実際の顔の検出精度は検証しません。
+
+MediaPipe本体とCDNのWASMは **0.10.35** に揃えて固定しています。実モデルのGPU／CPU初期化と空画像での推論は、別のスモークテストで確認できます（カメラや人物画像は使いません）。
+
+```sh
+curl -fL https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task -o /tmp/face_landmarker.task
+MODEL_PATH=/tmp/face_landmarker.task npm run test:tracking
+# システムChromiumなら CHROMIUM_PATH=/usr/bin/chromium も指定
+```
+
+WASMはインストール済みパッケージから、モデルは指定したローカルファイルから検証ブラウザへ配信します。結果は `docs/qa/tracking-smoke.json`。ライブCDN配信や実際の人物の顔追従を確認するテストではありません。
+
+視覚比較・手動評価・残課題は [品質監査](docs/QUALITY.md) を参照してください。
+
+## Cloudflare Pages
+
+GitHub連携でPagesプロジェクトを作成し、以下を設定します。
+
+| 設定 | 値 |
+| --- | --- |
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Root directory | リポジトリルート |
+| Node.js | 22 |
+
+既存の安定ブランチは `claude/face-replacement-video-app-pNRQB`。変更は別ブランチ `codex/premium-avatar-studio` でレビューしてください。PRのプレビューデプロイで実機確認してから統合する運用を推奨します。本作業から本番環境へのデプロイは行っていません。
