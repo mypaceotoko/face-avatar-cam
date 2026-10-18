@@ -1,30 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { createSceneCamera, updateCameraAspect } from '../three/alignCameraToVideo';
-import { createBackgroundPlane, type BackgroundPlane } from '../three/createBackgroundPlane';
-
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import {
+  createBackgroundPlane,
+  type BackgroundPlane,
+} from "../three/createBackgroundPlane";
+import {
+  createSceneCamera,
+  updateCameraAspect,
+} from "../three/alignCameraToVideo";
 export type ThreeRefs = {
   renderer: THREE.WebGLRenderer | null;
   scene: THREE.Scene | null;
   camera: THREE.PerspectiveCamera | null;
-  /** Mirror group: front-camera convention, scale.x = -1. Children: bg + avatar. */
   mirrorRoot: THREE.Group | null;
   background: BackgroundPlane | null;
 };
-
-const BG_DISTANCE_CM = 120;
-
-export type UseThreeSceneResult = {
-  refs: React.MutableRefObject<ThreeRefs>;
-  /** State-backed handle so downstream hooks can react to scene readiness. */
-  mirrorRoot: THREE.Group | null;
-};
-
 export function useThreeScene(
   canvasRef: React.RefObject<HTMLCanvasElement>,
   videoRef: React.RefObject<HTMLVideoElement>,
-  active: boolean,
-): UseThreeSceneResult {
+  cameraActive: boolean,
+  mirrored = true,
+) {
   const refs = useRef<ThreeRefs>({
     renderer: null,
     scene: null,
@@ -32,89 +28,134 @@ export function useThreeScene(
     mirrorRoot: null,
     background: null,
   });
-  const rafRef = useRef<number | null>(null);
+  const options = useRef({ cameraActive, mirrored });
+  options.current = { cameraActive, mirrored };
   const [mirrorRoot, setMirrorRoot] = useState<THREE.Group | null>(null);
-
+  const [error, setError] = useState<string | null>(null);
+  const [contextLost, setContextLost] = useState(false);
+  const stats = useRef({ fps: 0, triangles: 0, calls: 0, dpr: 1 });
   useEffect(() => {
-    if (!active) return;
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
+    const canvas = canvasRef.current,
+      video = videoRef.current;
     if (!canvas || !video) return;
-
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: false,
-      preserveDrawingBuffer: true, // required for canvas.captureStream on some browsers
-      powerPreference: 'high-performance',
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: false,
+        preserveDrawingBuffer: true,
+        powerPreference: "default",
+      });
+    } catch {
+      setError(
+        "3D表示を開始できません。Safariを更新して、ページを開き直してください。",
+      );
+      return;
+    }
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // Phones with very high DPRs (3+) burn fill rate for little visible gain;
-    // cap at 2 to keep the rAF loop comfortably above 30fps.
-    const isCoarse =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(pointer: coarse)').matches;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isCoarse ? 1.75 : 2));
-
-    // iOS Safari intermittently loses the WebGL context when the page is
-    // backgrounded; prevent the default so the browser tries to restore it.
-    const onContextLost = (ev: Event) => {
-      ev.preventDefault();
-    };
-    canvas.addEventListener('webglcontextlost', onContextLost);
-
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    let dpr = Math.min(devicePixelRatio, coarse ? 1.5 : 2);
+    renderer.setPixelRatio(dpr);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-
-    const camera = createSceneCamera(1);
-
-    const mirror = new THREE.Group();
-    mirror.scale.x = -1;
+    scene.background = new THREE.Color("#e8ded4");
+    const camera = createSceneCamera(1),
+      mirror = new THREE.Group();
     scene.add(mirror);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(0.4, 0.6, 1).multiplyScalar(50);
+    scene.add(new THREE.HemisphereLight(0xfff4e8, 0x85748b, 2.0));
+    const key = new THREE.DirectionalLight(0xfff3e5, 2.6);
+    key.position.set(-30, 45, 65);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.35);
-    fill.position.set(-0.4, 0.2, 1).multiplyScalar(50);
+    const fill = new THREE.DirectionalLight(0xe6eeff, 1.15);
+    fill.position.set(40, 10, 30);
     scene.add(fill);
-
+    const rim = new THREE.DirectionalLight(0xffddbf, 2.2);
+    rim.position.set(20, 30, -75);
+    scene.add(rim);
     const background = createBackgroundPlane(video);
     mirror.add(background.mesh);
-
     refs.current = { renderer, scene, camera, mirrorRoot: mirror, background };
     setMirrorRoot(mirror);
-
+    let lost = false,
+      raf = 0,
+      last = 0,
+      start = performance.now(),
+      frames = 0,
+      slowWindows = 0;
     const resize = () => {
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      if (w === 0 || h === 0) return;
+      const w = canvas.clientWidth,
+        h = canvas.clientHeight;
+      if (!w || !h) return;
       renderer.setSize(w, h, false);
-      const aspect = w / h;
-      updateCameraAspect(camera, aspect);
-      const va =
-        video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : aspect;
-      background.resize(camera, BG_DISTANCE_CM, va);
+      updateCameraAspect(camera, w / h);
+      background.resize(
+        camera,
+        120,
+        video.videoWidth && video.videoHeight
+          ? video.videoWidth / video.videoHeight
+          : w / h,
+      );
     };
-
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-    video.addEventListener('loadedmetadata', resize);
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      lost = true;
+      setContextLost(true);
+    };
+    const onRestored = () => {
+      lost = false;
+      setContextLost(false);
+      resize();
+    };
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    video.addEventListener("loadedmetadata", resize);
     resize();
-
-    const tick = () => {
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      if (
+        lost ||
+        document.hidden ||
+        now - last < (coarse ? 1000 / 30 : 1000 / 60) - 1
+      )
+        return;
+      last = now;
+      mirror.scale.x =
+        options.current.cameraActive && options.current.mirrored ? -1 : 1;
+      background.mesh.visible =
+        options.current.cameraActive && video.readyState >= 2;
       renderer.render(scene, camera);
-      rafRef.current = requestAnimationFrame(tick);
+      frames++;
+      if (now - start > 2000) {
+        const fps = (frames * 1000) / (now - start);
+        stats.current = {
+          fps,
+          triangles: renderer.info.render.triangles,
+          calls: renderer.info.render.calls,
+          dpr,
+        };
+        // Hysteresis: only reduce after sustained slow rendering; no oscillation.
+        slowWindows = fps < (coarse ? 25 : 42) ? slowWindows + 1 : 0;
+        if (slowWindows >= 2 && dpr > 1) {
+          dpr = Math.max(1, dpr - 0.25);
+          renderer.setPixelRatio(dpr);
+          resize();
+          slowWindows = 0;
+        }
+        frames = 0;
+        start = now;
+      }
     };
-    rafRef.current = requestAnimationFrame(tick);
-
+    raf = requestAnimationFrame(tick);
     return () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-      ro.disconnect();
-      video.removeEventListener('loadedmetadata', resize);
-      canvas.removeEventListener('webglcontextlost', onContextLost);
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      video.removeEventListener("loadedmetadata", resize);
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
       background.dispose();
       renderer.dispose();
       refs.current = {
@@ -124,9 +165,7 @@ export function useThreeScene(
         mirrorRoot: null,
         background: null,
       };
-      setMirrorRoot(null);
     };
-  }, [active, canvasRef, videoRef]);
-
-  return { refs, mirrorRoot };
+  }, [canvasRef, videoRef]);
+  return { refs, mirrorRoot, error, contextLost, stats };
 }
