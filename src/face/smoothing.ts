@@ -1,4 +1,8 @@
-import { BLENDSHAPE_CHANNELS, type BlendshapeMap, type BlendshapeName } from './types';
+import {
+  BLENDSHAPE_CHANNELS,
+  type BlendshapeMap,
+  type BlendshapeName,
+} from "./types";
 
 // Per-channel exponential moving average. Higher alpha = snappier.
 // Blinks are deliberately fast so they read as a real blink, not a fade.
@@ -63,9 +67,11 @@ export class BlendshapeSmoother {
     for (const k of BLENDSHAPE_CHANNELS) this.state[k] = 0;
   }
 
-  update(target: BlendshapeMap): BlendshapeMap {
+  update(target: BlendshapeMap, deltaSeconds = 1 / 60): BlendshapeMap {
     for (const k of BLENDSHAPE_CHANNELS) {
-      const a = ALPHA[k];
+      const a =
+        1 -
+        Math.pow(1 - ALPHA[k], Math.min(0.1, Math.max(0, deltaSeconds)) * 60);
       this.state[k] = this.state[k] + (target[k] - this.state[k]) * a;
     }
     return this.state;

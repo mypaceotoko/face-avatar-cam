@@ -1,82 +1,98 @@
-import type { CameraStatus } from '../hooks/useCamera';
-import type { RecorderStatus } from '../hooks/useRecorder';
-
+import type { CameraStatus } from "../hooks/useCamera";
+import type { RecorderStatus } from "../hooks/useRecorder";
 type Props = {
   camStatus: CameraStatus;
-  camError: string | null;
-  faceStatus: string;
-  faceError: string | null;
   recStatus: RecorderStatus;
   tracking: boolean;
   calibrating: boolean;
-  debug: boolean;
+  audio: boolean;
+  disabled: boolean;
   onStart: () => void;
   onStop: () => void;
+  onFlip: () => void;
   onToggleTracking: () => void;
   onCalibrate: () => void;
   onToggleRec: () => void;
-  onToggleDebug: () => void;
+  onPhoto: () => void;
+  onAudio: (on: boolean) => void;
 };
-
-export function ControlPanel({
-  camStatus,
-  camError,
-  faceStatus,
-  faceError,
-  recStatus,
-  tracking,
-  calibrating,
-  debug,
-  onStart,
-  onStop,
-  onToggleTracking,
-  onCalibrate,
-  onToggleRec,
-  onToggleDebug,
-}: Props) {
+export function ControlPanel(p: Props) {
+  const ready = p.camStatus === "ready",
+    busy = p.recStatus === "recording" || p.recStatus === "stopping";
   return (
     <div className="controls">
-      {camStatus !== 'ready' ? (
+      <div className="capture-actions">
         <button
           className="btn btn--primary"
-          onClick={onStart}
-          disabled={camStatus === 'starting'}
+          onClick={ready ? p.onStop : p.onStart}
+          disabled={p.camStatus === "starting" || p.recStatus === "stopping"}
         >
-          {camStatus === 'starting' ? '起動中…' : 'カメラ開始'}
+          {ready
+            ? "カメラ停止"
+            : p.camStatus === "starting"
+              ? "接続中…"
+              : "カメラ開始"}
         </button>
-      ) : (
-        <>
-          <button className="btn" onClick={onStop}>
-            停止
-          </button>
-          <button
-            className={`btn ${tracking ? 'btn--primary' : ''}`}
-            onClick={onToggleTracking}
-          >
-            追従 {tracking ? 'ON' : 'OFF'}
-          </button>
-          <button className="btn" onClick={onCalibrate} disabled={calibrating}>
-            {calibrating ? '取得中…' : 'キャリブレ'}
-          </button>
-          {recStatus !== 'unsupported' && (
+        <button
+          className="shutter"
+          aria-label="写真撮影"
+          onClick={p.onPhoto}
+          disabled={p.disabled || busy}
+        >
+          <span />
+        </button>
+        <button
+          className={`btn ${busy ? "btn--danger" : ""}`}
+          onClick={p.onToggleRec}
+          disabled={
+            p.disabled ||
+            p.recStatus === "unsupported" ||
+            p.recStatus === "stopping"
+          }
+        >
+          {p.recStatus === "recording"
+            ? "■ 録画停止"
+            : p.recStatus === "stopping"
+              ? "保存中…"
+              : "● 動画録画"}
+        </button>
+      </div>
+      <div className="camera-options">
+        {ready ? (
+          <>
             <button
-              className={`btn ${recStatus === 'recording' ? 'btn--danger' : 'btn--primary'}`}
-              onClick={onToggleRec}
+              onClick={p.onToggleTracking}
+              aria-pressed={p.tracking}
+              disabled={busy}
             >
-              {recStatus === 'recording' ? '録画停止' : '録画開始'}
+              顔追従 {p.tracking ? "ON" : "OFF"}
             </button>
-          )}
-        </>
+            <button
+              onClick={p.onCalibrate}
+              disabled={p.calibrating || !p.tracking}
+            >
+              {p.calibrating ? "取得中…" : "表情を補正"}
+            </button>
+            <button onClick={p.onFlip} disabled={busy}>
+              カメラ切替
+            </button>
+          </>
+        ) : (
+          <label>
+            <input
+              type="checkbox"
+              checked={p.audio}
+              onChange={(e) => p.onAudio(e.target.checked)}
+            />{" "}
+            マイクを使う
+          </label>
+        )}
+      </div>
+      {p.recStatus === "unsupported" && (
+        <p className="status">
+          このブラウザは動画録画に対応していません。写真撮影をご利用ください。
+        </p>
       )}
-      <button className="btn btn--ghost" onClick={onToggleDebug}>
-        Debug {debug ? 'OFF' : 'ON'}
-      </button>
-      <span className="status">
-        cam:{camStatus}
-        {camError ? ` — ${camError}` : ''} / face:{faceStatus}
-        {faceError ? ` — ${faceError}` : ''}
-        {recStatus === 'unsupported' && ' / rec:unsupported'}
-      </span>
     </div>
   );
 }
